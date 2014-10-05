@@ -51,6 +51,7 @@ main = do
             randomS <- stateful randomSeries pop
             monster <- transfer2 initialMonster wanderOrHunt player randomS
             return $ renderFrame win <$> player <*> monster <*> randomS
+            return $ renderFrame win <$> player <*> monster
           fix $ \loop -> do
                readInput win directionKeySink
                join network
@@ -121,9 +122,7 @@ wander _ (Monster (Vector2 xmon ymon) hunting (Wander WalkRight n))
 glDoubleToDouble :: GLdouble -> Double
 glDoubleToDouble (CDouble x) = realToFrac x
 
-renderFrame window (Player (Vector2 xpos ypos)) monster@(Monster (Vector2 xmon ymon) hunting (Wander direction _)) n = do
-   print $ head n
-   print monster
+renderFrame window (Player (Vector2 xpos ypos)) monster@(Monster (Vector2 xmon ymon) hunting (Wander direction _)) = do
    clear [ColorBuffer]
    color $ Color4 0 0 0 (1 :: GLfloat)
    renderPrimitive Quads $ do
