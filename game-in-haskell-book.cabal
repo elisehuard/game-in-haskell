@@ -44,5 +44,6 @@ executable frp-demo
                      , GLFW-b
                      , OpenGL
                      , elerea
+                     , random
   hs-source-dirs:      src
   default-language:    Haskell2010
