@@ -1,9 +1,9 @@
 {-# LANGUAGE PackageImports #-}
 import "GLFW-b" Graphics.UI.GLFW as GLFW
 import Graphics.Rendering.OpenGL hiding (Front)
-import System.Exit ( exitWith, ExitCode(ExitSuccess) )
+import System.Exit ( exitSuccess )
 import Control.Concurrent (threadDelay)
-import Control.Monad (when)
+import Control.Monad (when, unless)
 
 type Pos = Vector2 GLdouble
 data Player = Player Pos
@@ -22,7 +22,7 @@ main = do
     withWindow width height "Game-Demo" $ \win -> do
           initGL width height
           loop win initialPlayer
-          exitWith ExitSuccess
+          exitSuccess
     where loop window state =  do
             threadDelay 20000
             pollEvents
@@ -33,20 +33,18 @@ main = do
             d <- keyIsPressed window Key'Down
             let newState = movePlayer (l,r,u,d) state 10
             renderFrame newState window
-            if k
-              then return ()
-              else loop window newState
+            unless k $ loop window newState
 
 movePlayer (True, _, _, _) (Player (Vector2 xpos ypos)) increment = Player (Vector2 (xpos - increment) ypos)
 movePlayer (_, True, _, _) (Player (Vector2 xpos ypos)) increment = Player (Vector2 (xpos + increment) ypos)
 movePlayer (_, _, True, _) (Player (Vector2 xpos ypos)) increment = Player (Vector2 xpos (ypos + increment))
 movePlayer (_, _, _, True) (Player (Vector2 xpos ypos)) increment = Player (Vector2 xpos (ypos - increment))
-movePlayer (False, False, False, False) (Player (Vector2 xpos ypos)) increment = Player (Vector2 xpos ypos)
+movePlayer (False, False, False, False) (Player (Vector2 xpos ypos)) _ = Player (Vector2 xpos ypos)
 
 renderFrame (Player (Vector2 xpos ypos)) window = do
    clear [ColorBuffer]
    color $ Color4 0 0 0 (1 :: GLfloat)
-   let playerSize = (20 :: GLdouble)
+   let playerSize = 20 :: GLdouble
    renderPrimitive Quads $ do
         vertex $ Vertex2 (xpos - playerSize/2) (ypos - playerSize/2)
         vertex $ Vertex2 (xpos + playerSize/2) (ypos - playerSize/2)

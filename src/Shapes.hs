@@ -1,9 +1,9 @@
 {-# LANGUAGE PackageImports #-}
 import "GLFW-b" Graphics.UI.GLFW as GLFW
 import Graphics.Rendering.OpenGL hiding (Front)
-import System.Exit ( exitWith, ExitCode(ExitSuccess) )
+import System.Exit ( exitSuccess )
 import Control.Concurrent (threadDelay)
-import Control.Monad (when)
+import Control.Monad (when, unless)
 
 initGL width height = do
   clearColor $= Color4 1 1 1 1
@@ -16,20 +16,18 @@ main = do
     withWindow width height "Game-Demo" $ \win -> do
           initGL width height
           loop win
-          exitWith ExitSuccess
+          exitSuccess
 loop window =  do
     threadDelay 20000
     pollEvents
     renderFrame window
     k <- keyIsPressed window Key'Escape
-    if k
-        then return ()
-        else loop window
+    unless k $ loop window
 
 renderFrame window = do
      clear[ColorBuffer]
      color $ Color4 0 0 0 (1 :: GLdouble)
-     renderPrimitive Points $ do
+     renderPrimitive Points $
         vertex $ Vertex2 20 (20 :: GLdouble)
      renderPrimitive Lines $ do
         vertex $ Vertex2 50 (50 :: GLdouble)
@@ -58,7 +56,7 @@ renderFrame window = do
          ang p = p * 2 * pi / poly
          r = 50
          pos   = map (\p -> (400 + cos(ang p)*r, 100 + sin(ang p)*r)) [1,2..poly]
-     renderPrimitive Polygon $ do
+     renderPrimitive Polygon $
         mapM_ (\(x,y) -> vertex $ Vertex2 x (y :: GLdouble)) pos
      flush
      swapBuffers window
