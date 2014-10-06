@@ -7,9 +7,8 @@ import Control.Monad (when)
 
 type Pos = Vector2 GLdouble
 data Player = Player Pos
-data State = State { player :: Player }
 
-initialState = State { player = Player (Vector2 200 200) }
+initialPlayer = Player (Vector2 200 200)
 
 initGL width height = do
   clearColor $= Color4 1 1 1 1
@@ -22,7 +21,7 @@ main = do
         height = 480
     withWindow width height "Game-Demo" $ \win -> do
           initGL width height
-          loop win initialState
+          loop win initialPlayer
           exitWith ExitSuccess
     where loop window state =  do
             threadDelay 20000
@@ -38,13 +37,13 @@ main = do
               then return ()
               else loop window newState
 
-movePlayer (True, _, _, _) State { player = Player (Vector2 xpos ypos) } increment = State { player = Player (Vector2 (xpos - increment) ypos) }
-movePlayer (_, True, _, _) State { player = Player (Vector2 xpos ypos) } increment = State { player = Player (Vector2 (xpos + increment) ypos) }
-movePlayer (_, _, True, _) State { player = Player (Vector2 xpos ypos) } increment = State { player = Player (Vector2 xpos (ypos + increment)) }
-movePlayer (_, _, _, True) State { player = Player (Vector2 xpos ypos) } increment = State { player = Player (Vector2 xpos (ypos - increment)) }
-movePlayer (False, False, False, False) State { player = Player (Vector2 xpos ypos) } increment = State { player = Player (Vector2 xpos ypos) }
+movePlayer (True, _, _, _) (Player (Vector2 xpos ypos)) increment = Player (Vector2 (xpos - increment) ypos)
+movePlayer (_, True, _, _) (Player (Vector2 xpos ypos)) increment = Player (Vector2 (xpos + increment) ypos)
+movePlayer (_, _, True, _) (Player (Vector2 xpos ypos)) increment = Player (Vector2 xpos (ypos + increment))
+movePlayer (_, _, _, True) (Player (Vector2 xpos ypos)) increment = Player (Vector2 xpos (ypos - increment))
+movePlayer (False, False, False, False) (Player (Vector2 xpos ypos)) increment = Player (Vector2 xpos ypos)
 
-renderFrame State { player = Player (Vector2 xpos ypos) } window = do
+renderFrame (Player (Vector2 xpos ypos)) window = do
    clear [ColorBuffer]
    color $ Color4 0 0 0 (1 :: GLfloat)
    let playerSize = (20 :: GLdouble)
