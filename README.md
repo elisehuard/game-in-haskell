@@ -13,3 +13,13 @@ I recommend using a sandbox. checkout the repo, and then
 Showing how to set up a window and draw basic shapes:
 
     cabal run shapes-demo
+
+## Chapter 2
+
+State in a more traditional way:
+
+    cabal run state-demo
+
+State with FRP:
+
+    cabal run frp-demo
