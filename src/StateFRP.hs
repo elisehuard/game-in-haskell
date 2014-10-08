@@ -14,10 +14,11 @@ import Graphics.Rendering.FTGL
 type Pos = Vector2 GLdouble
 data Player = Player Pos
 type Hunting = Bool
-data Monster = Monster Pos Hunting Walking
+data Monster = Monster Pos MonsterStatus
                deriving Show
 
-data Walking = Wander Direction Int
+data MonsterStatus = Wander Direction Int
+                   | Hunting
                deriving Show
 data Direction = WalkUp | WalkDown | WalkLeft | WalkRight
                  deriving (Show, Enum, Bounded)
@@ -28,7 +29,7 @@ instance Random Direction where
   random g = randomR (minBound, maxBound) g
 
 initialPlayer = Player (Vector2 200 200)
-initialMonster = Monster (Vector2 400 400) False (Wander WalkUp wanderDist)
+initialMonster = Monster (Vector2 400 400) (Wander WalkUp wanderDist)
 width = 640
 height = 480
 playerSize = 20 :: GLdouble
@@ -48,13 +49,7 @@ main = do
     font <- createTextureFont "fonts/good-times.ttf"
     withWindow width height "Game-Demo" $ \win -> do
           initGL width height
-          network <- start $ mdo
-            player <- transfer2 initialPlayer (\p dead dK -> movePlayer p dK dead 10) directionKey gameOver'
-            randomS <- stateful randomSeries pop
-            monster <- transfer3 initialMonster wanderOrHunt player randomS gameOver'
-            let gameOver = playerEaten <$> player <*> monster
-            gameOver' <- delay False gameOver
-            return $ renderFrame win font <$> player <*> monster <*> gameOver
+          network <- start $ hunted win font directionKey randomSeries
           fix $ \loop -> do
                readInput win directionKeySink
                join network
@@ -63,11 +58,16 @@ main = do
                unless esc loop
           exitSuccess
 
-playerEaten :: Player -> Monster -> Bool
-playerEaten player monster = distance player monster < 10
-
-pop [] = []
-pop (x:xs) = xs
+hunted win font directionKey randomSeries = mdo
+    player <- transfer2 initialPlayer (\p dead dK -> movePlayer p dK dead 10) directionKey gameOver'
+    randomS <- stateful randomSeries pop
+    monster <- transfer3 initialMonster wanderOrHunt player randomS gameOver'
+    gameOver <- memo (playerEaten <$> player <*> monster)
+    gameOver' <- delay False gameOver
+    return $ renderFrame win font <$> player <*> monster <*> gameOver
+    where playerEaten player monster = distance player monster < 10
+          pop [] = []
+          pop (x:xs) = xs
 
 readInput window directionKeySink = do
     pollEvents
@@ -103,35 +103,36 @@ wanderOrHunt player randomSeries False monster = if close player monster
 
 close player monster = distance player monster < huntingDist
 
-distance (Player (Vector2 xpos ypos)) (Monster (Vector2 xmon ymon) _ _) = sqrt((xpos - xmon)^2 + (ypos - ymon)^2)
+distance (Player (Vector2 xpos ypos)) (Monster (Vector2 xmon ymon) _) = sqrt((xpos - xmon)^2 + (ypos - ymon)^2)
 
 -- if player is upper left quadrant, diagonal left
 -- means xpos > xmon and ypos > ymon
-hunt (Player (Vector2 xpos ypos)) (Monster (Vector2 xmon ymon) _ _) 
-  | (xpos > xmon) && (ypos > ymon) = Monster (Vector2 (xmon + monsterSpeed) (ymon + monsterSpeed)) True (Wander WalkUp wanderDist)
-  | (xpos <= xmon) && (ypos > ymon) = Monster (Vector2 (xmon - monsterSpeed) (ymon + monsterSpeed)) True (Wander WalkUp wanderDist)
-  | (xpos <= xmon) && (ypos <= ymon) = Monster (Vector2 (xmon - monsterSpeed) (ymon - monsterSpeed)) True (Wander WalkUp wanderDist)
-  | (xpos > xmon) && (ypos <= ymon) = Monster (Vector2 (xmon + monsterSpeed) (ymon - monsterSpeed)) True (Wander WalkUp wanderDist)
+hunt (Player (Vector2 xpos ypos)) (Monster (Vector2 xmon ymon) _) 
+  | (xpos > xmon) && (ypos > ymon) = Monster (Vector2 (xmon + monsterSpeed) (ymon + monsterSpeed)) Hunting
+  | (xpos <= xmon) && (ypos > ymon) = Monster (Vector2 (xmon - monsterSpeed) (ymon + monsterSpeed)) Hunting
+  | (xpos <= xmon) && (ypos <= ymon) = Monster (Vector2 (xmon - monsterSpeed) (ymon - monsterSpeed)) Hunting
+  | (xpos > xmon) && (ypos <= ymon) = Monster (Vector2 (xmon + monsterSpeed) (ymon - monsterSpeed)) Hunting
 
 -- turn in random direction
 wander :: [Direction] -> Monster -> Monster
-wander randomSeries (Monster (Vector2 xmon ymon) _ (Wander _ 0)) = Monster (Vector2 xmon ymon) False (Wander (head randomSeries) wanderDist)
+wander randomSeries (Monster (Vector2 xmon ymon) (Wander _ 0)) = Monster (Vector2 xmon ymon) (Wander (head randomSeries) wanderDist)
+wander randomSeries (Monster (Vector2 xmon ymon) Hunting) = Monster (Vector2 xmon ymon) (Wander (head randomSeries) wanderDist)
 -- go straight
-wander _ (Monster (Vector2 xmon ymon) _ (Wander WalkUp n))
-  | ymon < (fromIntegral height - monsterSize/2) = Monster (Vector2 xmon (ymon + monsterSpeed)) False (Wander WalkUp (n-1))
-  | otherwise = Monster (Vector2 xmon ymon) False (Wander WalkDown (n-1))
-wander _ (Monster (Vector2 xmon ymon) _ (Wander WalkDown n))
-  | ymon > monsterSize/2 = Monster (Vector2 xmon (ymon - monsterSpeed)) False (Wander WalkDown (n-1))
-  | otherwise = Monster (Vector2 xmon ymon) False (Wander WalkUp (n-1))
-wander _ (Monster (Vector2 xmon ymon) _ (Wander WalkLeft n))
-  | xmon > monsterSize/2 = Monster (Vector2 (xmon - monsterSpeed) ymon) False (Wander WalkLeft (n-1))
-  | otherwise = Monster (Vector2 xmon ymon) False (Wander WalkRight (n-1)) -- about-face
-wander _ (Monster (Vector2 xmon ymon) _ (Wander WalkRight n))
-  | xmon < (fromIntegral width - monsterSize/2) = Monster (Vector2 (xmon + monsterSpeed) ymon) False (Wander WalkRight (n-1))
-  | otherwise = Monster (Vector2 xmon ymon) False (Wander WalkLeft (n-1)) -- about-face
+wander _ (Monster (Vector2 xmon ymon) (Wander WalkUp n))
+  | ymon < (fromIntegral height - monsterSize/2) = Monster (Vector2 xmon (ymon + monsterSpeed)) (Wander WalkUp (n-1))
+  | otherwise = Monster (Vector2 xmon ymon) (Wander WalkDown (n-1))
+wander _ (Monster (Vector2 xmon ymon) (Wander WalkDown n))
+  | ymon > monsterSize/2 = Monster (Vector2 xmon (ymon - monsterSpeed)) (Wander WalkDown (n-1))
+  | otherwise = Monster (Vector2 xmon ymon) (Wander WalkUp (n-1))
+wander _ (Monster (Vector2 xmon ymon) (Wander WalkLeft n))
+  | xmon > monsterSize/2 = Monster (Vector2 (xmon - monsterSpeed) ymon) (Wander WalkLeft (n-1))
+  | otherwise = Monster (Vector2 xmon ymon)  (Wander WalkRight (n-1)) -- about-face
+wander _ (Monster (Vector2 xmon ymon) (Wander WalkRight n))
+  | xmon < (fromIntegral width - monsterSize/2) = Monster (Vector2 (xmon + monsterSpeed) ymon) (Wander WalkRight (n-1))
+  | otherwise = Monster (Vector2 xmon ymon) (Wander WalkLeft (n-1)) -- about-face
 
 renderFrame :: Window -> Font -> Player -> Monster -> Bool -> IO ()
-renderFrame window font (Player (Vector2 xpos ypos)) (Monster (Vector2 xmon ymon) hunting (Wander direction _)) gameOver = do
+renderFrame window font (Player (Vector2 xpos ypos)) (Monster (Vector2 xmon ymon) status) gameOver = do
    clear [ColorBuffer]
    color $ Color4 0 0 0 (1 :: GLfloat)
    renderPrimitive Quads $ do
@@ -139,7 +140,7 @@ renderFrame window font (Player (Vector2 xpos ypos)) (Monster (Vector2 xmon ymon
         vertex $ Vertex2 (xpos + playerSize/2) (ypos - playerSize/2)
         vertex $ Vertex2 (xpos + playerSize/2) (ypos + playerSize/2)
         vertex $ Vertex2 (xpos - playerSize/2) (ypos + playerSize/2)
-   color $ monsterColor hunting
+   color $ monsterColor status
    renderPrimitive Triangles $ do
         vertex $ Vertex2 (xmon - monsterSize/2) (ymon - monsterSize/2)
         vertex $ Vertex2 (xmon + monsterSize/2) (ymon - monsterSize/2)
@@ -147,9 +148,8 @@ renderFrame window font (Player (Vector2 xpos ypos)) (Monster (Vector2 xmon ymon
    when gameOver (printText font 24 (220, 240) "Game Over")
    flush
    swapBuffers window
-
-monsterColor True = Color4 1 0 0 (1 :: GLfloat) -- red hunting
-monsterColor False = Color4 0 1 0 (1 :: GLfloat) -- green wandering
+   where monsterColor Hunting = Color4 1 0 0 (1 :: GLfloat) -- red hunting
+         monsterColor (Wander _ _) = Color4 0 1 0 (1 :: GLfloat) -- green wandering
 
 withWindow :: Int -> Int -> String -> (GLFW.Window -> IO ()) -> IO ()
 withWindow width height title f = do
