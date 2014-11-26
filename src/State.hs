@@ -9,9 +9,10 @@ width  = 640
 height = 480
 
 type Pos = Point
-data Player = Player Pos
+data Player = Player {position :: Pos}
 
 initialPlayer = Player (200,200)
+playerSize = 20
 
 main :: IO ()
 main = do
@@ -30,14 +31,24 @@ main = do
             renderFrame newState window
             unless k $ loop window newState
 
-movePlayer (True, _, _, _) (Player (xpos, ypos)) increment = Player ((xpos - increment), ypos)
-movePlayer (_, True, _, _) (Player (xpos, ypos)) increment = Player ((xpos + increment), ypos)
-movePlayer (_, _, True, _) (Player (xpos, ypos)) increment = Player (xpos, (ypos + increment))
-movePlayer (_, _, _, True) (Player (xpos, ypos)) increment = Player (xpos, (ypos - increment))
-movePlayer (False, False, False, False) (Player (xpos, ypos)) _ = Player (xpos, ypos)
+movePlayer :: (Bool, Bool, Bool, Bool) -> Player -> Float -> Player
+movePlayer direction player@(Player (xpos, ypos)) increment
+         | outsideOfLimits (position (move direction player increment)) playerSize = player
+         | otherwise = move direction player increment
+
+outsideOfLimits :: (Float, Float) -> Float -> Bool
+outsideOfLimits (xmon, ymon) size = xmon > fromIntegral width/2 - size/2 ||
+                                    xmon < (-(fromIntegral width)/2 + size/2) ||
+                                    ymon > fromIntegral height/2 - size/2 ||
+                                    ymon < (-(fromIntegral height)/2 + size/2)
+
+move (True, _, _, _) (Player (xpos, ypos)) increment = Player ((xpos - increment), ypos)
+move (_, True, _, _) (Player (xpos, ypos)) increment = Player ((xpos + increment), ypos)
+move (_, _, True, _) (Player (xpos, ypos)) increment = Player (xpos, (ypos + increment))
+move (_, _, _, True) (Player (xpos, ypos)) increment = Player (xpos, (ypos - increment))
+move (False, False, False, False) (Player (xpos, ypos)) _ = Player (xpos, ypos)
 
 renderFrame (Player (xpos, ypos)) window = do
-   let playerSize = 20
    render (width, height) white $ translate xpos ypos $ rectangleSolid playerSize playerSize
    swapBuffers window
 

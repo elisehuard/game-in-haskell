@@ -11,7 +11,7 @@ import Foreign.C.Types (CDouble(..))
 import System.Random
 
 type Pos = Point
-data Player = Player Pos
+data Player = Player { position :: Pos }
 type Hunting = Bool
 data Monster = Monster Pos MonsterStatus
                deriving Show
@@ -68,20 +68,22 @@ readInput window directionKeySink = do
     directionKeySink (l, r, u, d)
 
 movePlayer :: (Bool, Bool, Bool, Bool) -> Player -> Bool -> Float -> Player
-movePlayer (_, _, _, _) player True _ = player
-movePlayer (True, _, _, _) (Player (xpos, ypos)) False increment
-         | xpos <= (-(fromIntegral width)/2 + playerSize/2) = Player (xpos, ypos)
-         | otherwise = Player ((xpos - increment), ypos)
-movePlayer (_, True, _, _) (Player (xpos, ypos)) False increment
-         | xpos >= (fromIntegral width/2 - playerSize/2) = Player (xpos, ypos)
-         | otherwise = Player ((xpos + increment), ypos)
-movePlayer (_, _, True, _) (Player (xpos, ypos)) False increment
-         | ypos >= (fromIntegral height/2 - playerSize/2) = Player (xpos, ypos)
-         | otherwise = Player (xpos, (ypos + increment))
-movePlayer (_, _, _, True) (Player (xpos, ypos)) False increment
-         | ypos <= (-(fromIntegral height)/2 + playerSize/2) = Player (xpos, ypos)
-         | otherwise = Player (xpos, (ypos - increment))
-movePlayer (False, False, False, False) (Player (xpos, ypos)) False increment = Player (xpos, ypos)
+movePlayer _ player True _ = player
+movePlayer direction player@(Player (xpos, ypos)) False increment
+         | outsideOfLimits (position (move direction player increment)) playerSize = player
+         | otherwise = move direction player increment
+
+outsideOfLimits :: (Float, Float) -> Float -> Bool
+outsideOfLimits (xmon, ymon) size = xmon > fromIntegral width/2 - size/2 ||
+                                    xmon < (-(fromIntegral width)/2 + size/2) ||
+                                    ymon > fromIntegral height/2 - size/2 ||
+                                    ymon < (-(fromIntegral height)/2 + size/2)
+
+move (True, _, _, _) (Player (xpos, ypos)) increment = Player ((xpos - increment), ypos)
+move (_, True, _, _) (Player (xpos, ypos)) increment = Player ((xpos + increment), ypos)
+move (_, _, True, _) (Player (xpos, ypos)) increment = Player (xpos, (ypos + increment))
+move (_, _, _, True) (Player (xpos, ypos)) increment = Player (xpos, (ypos - increment))
+move (False, False, False, False) (Player (xpos, ypos)) _ = Player (xpos, ypos)
 
 wanderDist = 40
 huntingDist = 100
@@ -106,16 +108,10 @@ wander r (Monster (xmon, ymon) (Wander _ 0)) = Monster (xmon, ymon) (Wander r wa
 wander r (Monster (xmon, ymon) Hunting) = Monster (xmon, ymon) (Wander r wanderDist)
 -- go straight
 wander _ (Monster (xmon, ymon) (Wander direction n)) = do
-                   let currentDirection = continueDirection direction (outsideOfView (xmon, ymon) monsterSize)
+                   let currentDirection = continueDirection direction (outsideOfLimits (xmon, ymon) monsterSize)
                    Monster
                        (stepInCurrentDirection currentDirection (xmon, ymon) monsterSpeed)
                        (Wander currentDirection (n-1))
-
-outsideOfView :: (Float, Float) -> Float -> Bool
-outsideOfView (xmon, ymon) size = xmon >= fromIntegral width/2 - size/2 ||
-                                  xmon <= (-(fromIntegral width)/2 + size/2) ||
-                                  ymon >= fromIntegral height/2 - size/2 ||
-                                  ymon <= (-(fromIntegral height)/2 + size/2)
 
 continueDirection :: Direction -> Bool -> Direction
 continueDirection WalkUp True = WalkDown
