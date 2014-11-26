@@ -55,6 +55,20 @@ executable frp-demo
   hs-source-dirs:      src
   default-language:    Haskell2010
 
+executable animated
+  main-is:             Animated.hs
+  -- other-modules:
+  -- other-extensions:
+  ghc-options:       -Wall
+  build-depends:       base >=4.7 && <4.8
+                     , GLFW-b
+                     , gloss
+                     , elerea
+                     , random
+                     , FTGL
+  hs-source-dirs:      src
+  default-language:    Haskell2010
+
 test-suite hlint
   type: exitcode-stdio-1.0
   main-is: hlint.hs
