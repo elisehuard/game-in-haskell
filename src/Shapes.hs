@@ -1,6 +1,8 @@
 {-# LANGUAGE PackageImports #-}
 import "GLFW-b" Graphics.UI.GLFW as GLFW
-import Graphics.Gloss
+import Graphics.Gloss.Rendering
+import Graphics.Gloss.Data.Color
+import Graphics.Gloss.Data.Picture
 import System.Exit ( exitSuccess )
 import Control.Concurrent (threadDelay)
 import Control.Monad (when, unless)
@@ -10,18 +12,19 @@ height = 480
 
 main :: IO ()
 main = do
+    glossState <- initState
     withWindow width height "Game-Demo" $ \win -> do
-          loop win
+          loop glossState win
           exitSuccess
-loop window =  do
+loop glossState window =  do
     threadDelay 20000
     pollEvents
-    renderFrame window
+    renderFrame window glossState
     k <- keyIsPressed window Key'Escape
-    unless k $ loop window
+    unless k $ loop glossState window
 
-renderFrame window = do
-     render (width, height) white $
+renderFrame window glossState = do
+     displayPicture (width, height) white glossState 1.0 $
        Pictures
                 [ Color violet $ translate (-300) 100 $ polygon [((-10), 10), ((-10), 70), (20, 20), (20, 30)]
                 , Color red $ translate (-200) 100 $ line [(-30, -30), (-40, 30), (30, 40), (50, -20)]

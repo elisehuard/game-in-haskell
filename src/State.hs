@@ -1,6 +1,7 @@
 {-# LANGUAGE PackageImports #-}
 import "GLFW-b" Graphics.UI.GLFW as GLFW
 import Graphics.Gloss
+import Graphics.Gloss.Rendering
 import System.Exit ( exitSuccess )
 import Control.Concurrent (threadDelay)
 import Control.Monad (when, unless)
@@ -16,10 +17,11 @@ playerSize = 20
 
 main :: IO ()
 main = do
+    glossState <- initState
     withWindow width height "Game-Demo" $ \win -> do
-          loop win initialPlayer
+          loop win initialPlayer glossState
           exitSuccess
-    where loop window state =  do
+    where loop window state glossState =  do
             threadDelay 20000
             pollEvents
             k <- keyIsPressed window Key'Escape
@@ -28,8 +30,8 @@ main = do
             u <- keyIsPressed window Key'Up
             d <- keyIsPressed window Key'Down
             let newState = movePlayer (l,r,u,d) state 10
-            renderFrame newState window
-            unless k $ loop window newState
+            renderFrame newState window glossState
+            unless k $ loop window newState glossState
 
 movePlayer :: (Bool, Bool, Bool, Bool) -> Player -> Float -> Player
 movePlayer direction player@(Player (xpos, ypos)) increment
@@ -48,8 +50,8 @@ move (_, _, True, _) (Player (xpos, ypos)) increment = Player (xpos, (ypos + inc
 move (_, _, _, True) (Player (xpos, ypos)) increment = Player (xpos, (ypos - increment))
 move (False, False, False, False) (Player (xpos, ypos)) _ = Player (xpos, ypos)
 
-renderFrame (Player (xpos, ypos)) window = do
-   render (width, height) white $ translate xpos ypos $ rectangleSolid playerSize playerSize
+renderFrame (Player (xpos, ypos)) window glossState = do
+   displayPicture (width, height) white glossState 1.0 $ translate xpos ypos $ rectangleSolid playerSize playerSize
    swapBuffers window
 
 withWindow :: Int -> Int -> String -> (GLFW.Window -> IO ()) -> IO ()

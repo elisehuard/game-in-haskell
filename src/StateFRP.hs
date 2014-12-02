@@ -1,6 +1,7 @@
 {-# LANGUAGE PackageImports, RecursiveDo #-}
 import "GLFW-b" Graphics.UI.GLFW as GLFW
 import Graphics.Gloss
+import Graphics.Gloss.Rendering
 import System.Exit ( exitSuccess )
 import Control.Concurrent (threadDelay)
 import Control.Monad (when, unless, join)
@@ -39,8 +40,9 @@ main :: IO ()
 main = do
     (directionKey, directionKeySink) <- external (False, False, False, False)
     randomGenerator <- newStdGen
+    glossState <- initState
     withWindow width height "Game-Demo" $ \win -> do
-          network <- start $ hunted win directionKey randomGenerator
+          network <- start $ hunted win directionKey randomGenerator glossState
           fix $ \loop -> do
                readInput win directionKeySink
                join network
@@ -49,13 +51,13 @@ main = do
                unless esc loop
           exitSuccess
 
-hunted win directionKey randomGenerator = mdo
+hunted win directionKey randomGenerator glossState = mdo
     player <- transfer2 initialPlayer (\p dead dK -> movePlayer p dK dead 10) directionKey gameOver'
     randomNumber <- stateful (undefined, randomGenerator) nextRandom
     monster <- transfer3 initialMonster wanderOrHunt player randomNumber gameOver'
     gameOver <- memo (playerEaten <$> player <*> monster)
     gameOver' <- delay False gameOver
-    return $ renderFrame win <$> player <*> monster <*> gameOver
+    return $ renderFrame win glossState <$> player <*> monster <*> gameOver
     where playerEaten player monster = distance player monster < (10^2  :: Float)
           nextRandom (a, g) = random g
 
@@ -125,9 +127,8 @@ stepInCurrentDirection WalkDown (xpos, ypos)  speed = (xpos, ypos - speed)
 stepInCurrentDirection WalkLeft (xpos, ypos)  speed = (xpos - speed, ypos)
 stepInCurrentDirection WalkRight (xpos, ypos) speed = (xpos + speed, ypos)
 
-renderFrame :: Window -> Player -> Monster -> Bool -> IO ()
-renderFrame window (Player (xpos, ypos)) (Monster (xmon, ymon) status) gameOver = do
-   render (width, height) white $ 
+renderFrame window glossState (Player (xpos, ypos)) (Monster (xmon, ymon) status) gameOver = do
+   displayPicture (width, height) white glossState 1.0 $ 
      Pictures $ gameOngoing gameOver
                              [renderPlayer xpos ypos,
                               renderMonster status xmon ymon]
