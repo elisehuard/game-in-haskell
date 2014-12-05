@@ -149,6 +149,7 @@ huntingDirection (-1) (-1) = WalkLeft
 huntingDirection (-1) 1 = WalkLeft
 huntingDirection 1 (-1) = WalkRight
 huntingDirection 1 1 = WalkRight
+huntingDirection (-1) _ = WalkLeft
 huntingDirection _ _ = WalkRight
 
 -- turn in random direction
@@ -184,23 +185,23 @@ renderFrame window glossState textures (Player (xpos, ypos) playerDir) (Monster 
 
 
 --renderPlayer :: Float -> Float -> Maybe Direction -> TextureSet -> Picture
-renderPlayer xpos ypos (Just (PlayerMovement WalkUp 0)) textureSet = translate xpos ypos $ backs textureSet !! 0
-renderPlayer xpos ypos (Just (PlayerMovement WalkUp 1)) textureSet = translate xpos ypos $ backs textureSet !! 1
-renderPlayer xpos ypos (Just (PlayerMovement WalkUp 2)) textureSet = translate xpos ypos $ backs textureSet !! 0
-renderPlayer xpos ypos (Just (PlayerMovement WalkUp 3)) textureSet = translate xpos ypos $ backs textureSet !! 2
-renderPlayer xpos ypos (Just (PlayerMovement WalkDown 0)) textureSet = translate xpos ypos $ fronts textureSet !! 0
-renderPlayer xpos ypos (Just (PlayerMovement WalkDown 1)) textureSet = translate xpos ypos $ fronts textureSet !! 1
-renderPlayer xpos ypos (Just (PlayerMovement WalkDown 2)) textureSet = translate xpos ypos $ fronts textureSet !! 0
-renderPlayer xpos ypos (Just (PlayerMovement WalkDown 3)) textureSet = translate xpos ypos $ fronts textureSet !! 2
-renderPlayer xpos ypos (Just (PlayerMovement WalkRight 0)) textureSet = translate xpos ypos $ rights textureSet !! 0
-renderPlayer xpos ypos (Just (PlayerMovement WalkRight 1)) textureSet = translate xpos ypos $ rights textureSet !! 1
-renderPlayer xpos ypos (Just (PlayerMovement WalkRight 2)) textureSet = translate xpos ypos $ rights textureSet !! 0
-renderPlayer xpos ypos (Just (PlayerMovement WalkRight 3)) textureSet = translate xpos ypos $ rights textureSet !! 2
-renderPlayer xpos ypos (Just (PlayerMovement WalkLeft 0)) textureSet = translate xpos ypos $ lefts textureSet !! 0
-renderPlayer xpos ypos (Just (PlayerMovement WalkLeft 1)) textureSet = translate xpos ypos $ lefts textureSet !! 1
-renderPlayer xpos ypos (Just (PlayerMovement WalkLeft 2)) textureSet = translate xpos ypos $ lefts textureSet !! 0
-renderPlayer xpos ypos (Just (PlayerMovement WalkLeft 3)) textureSet = translate xpos ypos $ lefts textureSet !! 2
-renderPlayer xpos ypos Nothing textureSet = translate xpos ypos $ fronts textureSet !! 0
+renderPlayer (Just (PlayerMovement WalkUp 0)) textureSet = backs textureSet !! 0
+renderPlayer (Just (PlayerMovement WalkUp 1)) textureSet = backs textureSet !! 1
+renderPlayer (Just (PlayerMovement WalkUp 2)) textureSet = backs textureSet !! 0
+renderPlayer (Just (PlayerMovement WalkUp 3)) textureSet = backs textureSet !! 2
+renderPlayer (Just (PlayerMovement WalkDown 0)) textureSet = fronts textureSet !! 0
+renderPlayer (Just (PlayerMovement WalkDown 1)) textureSet = fronts textureSet !! 1
+renderPlayer (Just (PlayerMovement WalkDown 2)) textureSet = fronts textureSet !! 0
+renderPlayer (Just (PlayerMovement WalkDown 3)) textureSet = fronts textureSet !! 2
+renderPlayer (Just (PlayerMovement WalkRight 0)) textureSet = rights textureSet !! 0
+renderPlayer (Just (PlayerMovement WalkRight 1)) textureSet = rights textureSet !! 1
+renderPlayer (Just (PlayerMovement WalkRight 2)) textureSet = rights textureSet !! 0
+renderPlayer (Just (PlayerMovement WalkRight 3)) textureSet = rights textureSet !! 2
+renderPlayer (Just (PlayerMovement WalkLeft 0)) textureSet = lefts textureSet !! 0
+renderPlayer (Just (PlayerMovement WalkLeft 1)) textureSet = lefts textureSet !! 1
+renderPlayer (Just (PlayerMovement WalkLeft 2)) textureSet = lefts textureSet !! 0
+renderPlayer (Just (PlayerMovement WalkLeft 3)) textureSet = lefts textureSet !! 2
+renderPlayer Nothing textureSet = fronts textureSet !! 0
 
 renderMonster :: MonsterStatus -> Float -> Float -> TextureSet -> TextureSet -> Picture
 renderMonster (Hunting WalkLeft) xpos ypos _ textureSet = translate xpos ypos $ left textureSet
