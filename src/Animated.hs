@@ -2,6 +2,7 @@
 import "GLFW-b" Graphics.UI.GLFW as GLFW
 import Graphics.Gloss
 import Graphics.Gloss.Rendering
+import Graphics.Gloss.Data.ViewPort
 import System.Exit ( exitSuccess )
 import Control.Concurrent (threadDelay)
 import Control.Monad (when, unless, join)
@@ -38,10 +39,29 @@ data Textures = Textures { background :: Picture
                          , monsterWalking :: TextureSet
                          , monsterHunting :: TextureSet }
 
+initialPlayer :: Player
 initialPlayer = Player (0, 0) Nothing
+
+initialMonster :: Monster
 initialMonster = Monster (200, 200) (Wander WalkUp wanderDist)
+
+initialViewport :: ViewPort
+initialViewport = ViewPort { viewPortTranslate = (0, 0), viewPortRotate = 0, viewPortScale = viewportScale }
+
+viewportScale = 4
+
+width :: Int
 width = 640
+
+height :: Int
 height = 480
+
+fullWidth :: Float
+fullWidth = fromIntegral width*viewportScale
+
+fullHeight :: Float
+fullHeight = fromIntegral height*viewportScale
+
 playerSize = 20
 monsterSize = 20
 monsterSpeed = 5
@@ -77,7 +97,7 @@ loadTextures = do
                                     <*> loadBMP "images/monster-hunting-right.bmp"
                                     <*> loadBMP "images/monster-hunting-left.bmp"
                                     <*> loadBMP "images/monster-hunting-right.bmp"
-    backgroundTexture <- loadBMP "images/background-1.bmp"
+    backgroundTexture <- loadBMP "images/background-large.bmp"
     return Textures { background = backgroundTexture
                     , player = playerTextureSet
                     , monsterWalking = monsterWalkingSet
@@ -93,9 +113,14 @@ hunted win directionKey randomGenerator textures glossState = mdo
     monster <- transfer3 initialMonster wanderOrHunt player randomNumber gameOver'
     gameOver <- memo (playerEaten <$> player <*> monster)
     gameOver' <- delay False gameOver
-    return $ renderFrame win glossState textures <$> player <*> monster <*> gameOver
+    viewport <- transfer initialViewport viewPortMove player
+    return $ renderFrame win glossState textures <$> player <*> monster <*> gameOver <*> viewport
     where playerEaten player monster = distance player monster < (10^2  :: Float)
           nextRandom (a, g) = random g
+
+viewPortMove :: Player -> ViewPort -> ViewPort
+viewPortMove (Player (x,y) _) (ViewPort { viewPortTranslate = _, viewPortRotate = rotation, viewPortScale = scaled }) =
+        ViewPort { viewPortTranslate = ((-x), (-y)), viewPortRotate = rotation, viewPortScale = scaled }
 
 readInput window directionKeySink = do
     pollEvents
@@ -117,6 +142,7 @@ outsideOfLimits (xmon, ymon) size = xmon > fromIntegral width/2 - size/2 ||
                                     ymon > fromIntegral height/2 - size/2 ||
                                     ymon < (-(fromIntegral height)/2 + size/2)
 
+move a b c | trace ("move " ++ show b) False = undefined
 move (True, _, _, _) (Player (xpos, ypos) (Just (PlayerMovement WalkLeft n))) increment = Player (xpos - increment, ypos) (Just $ PlayerMovement WalkLeft ((n+1) `mod` 4))
 move (True, _, _, _) (Player (xpos, ypos) _) increment = Player (xpos - increment, ypos) $ Just $ PlayerMovement WalkLeft 0
 move (_, True, _, _) (Player (xpos, ypos) (Just (PlayerMovement WalkRight n))) increment = Player (xpos + increment, ypos) (Just $ PlayerMovement WalkRight ((n+1) `mod` 4))
@@ -153,7 +179,8 @@ huntingDirection (-1) _ = WalkLeft
 huntingDirection _ _ = WalkRight
 
 -- turn in random direction
-wander :: Direction -> Monster -> Monster
+--wander :: Direction -> Monster -> Monster
+wander a b | trace ("wander " ++ show b) False = undefined
 wander r (Monster (xmon, ymon) (Wander _ 0)) = Monster (xmon, ymon) (Wander r wanderDist)
 wander r (Monster (xmon, ymon) (Hunting _)) = Monster (xmon, ymon) (Wander r wanderDist)
 -- go straight
@@ -175,12 +202,12 @@ stepInCurrentDirection WalkDown (xpos, ypos)  speed = (xpos, ypos - speed)
 stepInCurrentDirection WalkLeft (xpos, ypos)  speed = (xpos - speed, ypos)
 stepInCurrentDirection WalkRight (xpos, ypos) speed = (xpos + speed, ypos)
 
-renderFrame window glossState textures (Player (xpos, ypos) playerDir) (Monster (xmon, ymon) status) gameOver = do
-   displayPicture (width, height) white glossState 0.5 $ 
+renderFrame window glossState textures (Player (xpos, ypos) playerDir) (Monster (xmon, ymon) status) gameOver viewport = do
+   displayPicture (width, height) black glossState (viewPortScale viewport) $ 
      Pictures $ gameOngoing gameOver
-                             [background textures,
-                              renderPlayer xpos ypos playerDir (player textures),
-                              renderMonster status xmon ymon (monsterWalking textures) (monsterHunting textures) ]
+                             [applyViewPortToPicture viewport (background textures),
+                              renderPlayer playerDir (player textures),
+                              uncurry translate (viewPortTranslate viewport) $ renderMonster status xmon ymon (monsterWalking textures) (monsterHunting textures) ]
    swapBuffers window
 
 
