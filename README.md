@@ -23,3 +23,15 @@ State in a more traditional way:
 State with FRP:
 
     cabal run frp-demo
+
+## Chapter 3
+
+Using textures and animations, and viewport:
+
+    cabal run animated
+
+## Chapter 4
+
+Let's add some music and sounds:
+
+    cabal run music
