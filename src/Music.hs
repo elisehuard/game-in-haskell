@@ -12,7 +12,6 @@ import FRP.Elerea.Simple as Elerea
 import Foreign.C.Types (CDouble(..))
 import System.Random
 import Sound.ALUT hiding (Static)
-import Data.IORef
 import System.IO ( hPutStrLn, stderr )
 import Data.List (intersperse)
 import Debug.Trace
