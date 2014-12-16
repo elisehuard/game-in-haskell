@@ -86,6 +86,26 @@ executable music
   hs-source-dirs:      src
   default-language:    Haskell2010
 
+executable extended
+  main-is:             Hunted/Main.hs
+  other-modules:       Hunted.GameTypes
+                     , Hunted.Game
+                     , Hunted.Sound
+                     , Hunted.Graphics
+                     , Hunted.Backend
+  -- other-extensions:
+  ghc-options:       -Wall
+  build-depends:       base >=4.7 && <4.8
+                     , GLFW-b
+                     , gloss
+                     , gloss-rendering
+                     , elerea
+                     , random
+                     , ALUT
+                     , stm
+  hs-source-dirs:      src
+  default-language:    Haskell2010
+
 test-suite hlint
   type: exitcode-stdio-1.0
   main-is: hlint.hs
