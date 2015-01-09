@@ -21,6 +21,12 @@ initialMonster = Monster (200, 200) (Wander WalkUp wanderDist)
 initialViewport :: ViewPort
 initialViewport = ViewPort { viewPortTranslate = (0, 0), viewPortRotate = 0, viewPortScale = viewportScale }
 
+worldWidth :: Float
+worldWidth = 2560
+
+worldHeight :: Float
+worldHeight = 1920
+
 viewportScale = 4
 
 playerSize = 20
@@ -28,10 +34,10 @@ monsterSize = 20
 monsterSpeed = 5
 
 hunted win (width, height) directionKey randomGenerator textures glossState sounds = mdo
-    let fdimensions = (fromIntegral width, fromIntegral height)
-    player <- transfer2 initialPlayer (\p dead dK -> movePlayer p dK dead 10 fdimensions) directionKey gameOver'
+    let worldDimensions = (worldWidth, worldHeight)
+    player <- transfer2 initialPlayer (\p dead dK -> movePlayer p dK dead 10 worldDimensions) directionKey gameOver'
     randomNumber <- stateful (undefined, randomGenerator) nextRandom
-    monster <- transfer3 initialMonster (wanderOrHunt fdimensions) player randomNumber gameOver'
+    monster <- transfer3 initialMonster (wanderOrHunt worldDimensions) player randomNumber gameOver'
     monster' <- delay initialMonster monster
     gameOver <- memo (playerEaten <$> player <*> monster)
     gameOver' <- delay False gameOver
@@ -132,4 +138,4 @@ monitorStatusChange (Monster _ (Wander _ _)) (Monster _ (Hunting _)) pace = Just
 monitorStatusChange _ _ pace = Nothing
 
 -- output functions
-outputFunction window glossState textures dimensions sounds renderState soundState =  (renderFrame window glossState textures dimensions renderState) >> (playSounds sounds soundState)
+outputFunction window glossState textures dimensions sounds renderState soundState =  (renderFrame window glossState textures dimensions (worldWidth, worldHeight) renderState) >> (playSounds sounds soundState)

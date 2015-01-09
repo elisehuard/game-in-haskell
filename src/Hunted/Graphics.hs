@@ -48,11 +48,30 @@ loadAnims path1 path2 path3 = fun <$> loadBMP path1 <*> loadBMP path2 <*> loadBM
 renderFrame window glossState textures dimensions (RenderState (Player (xpos, ypos) playerDir) (Monster (xmon, ymon) status) gameOver viewport) = do
    displayPicture dimensions black glossState (viewPortScale viewport) $ 
      Pictures $ gameOngoing gameOver
-                             [applyViewPortToPicture viewport (background textures),
                               renderPlayer playerDir (player textures),
                               uncurry translate (viewPortTranslate viewport) $ renderMonster status xmon ymon (monsterWalking textures) (monsterHunting textures) ]
+                             [ uncurry translate (viewPortTranslate viewport) $ tiledBackground (background textures) worldWidth worldHeight,
    swapBuffers window
 
+-- tiling: pictures translated to the appropriate locations to fill up the given width and heights
+-- I scaled the tile to the greatest common factor of the width and height, but it should work to fit the actual width and height
+-- which potentially means translating the tiles back a bit not to go over the edge
+tileSize :: Float
+tileSize = 160
+tiledBackground texture width height = Pictures $ map (\a ->  ((uncurry translate) a) texture) $ translateMatrix width height
+
+-- what we want: 640, 480
+-- -320--x--(-160)--x--0--x--160--x--320
+--      -240      -80    80      240
+-- -240--x--(-80)--x--80--x--240
+--      -160       0     160
+translateMatrix :: Float -> Float -> [(Float, Float)]
+translateMatrix w h = concat $ map (zip xTiles)
+                             $ map (replicate (length xTiles)) yTiles
+                      where xTiles = [lowerbound w, lowerbound w + tileSize..higherbound w]
+                            yTiles = [lowerbound h, lowerbound h + tileSize..higherbound h]
+                            higherbound size = size/2 - tileSize/2
+                            lowerbound size = -(higherbound size)
 
 --renderPlayer :: Float -> Float -> Maybe Direction -> TextureSet -> Picture
 renderPlayer (Just (PlayerMovement WalkUp 0)) textureSet = backs textureSet !! 0
