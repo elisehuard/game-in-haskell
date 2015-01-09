@@ -56,6 +56,12 @@ width = 640
 height :: Int
 height = 480
 
+worldWidth :: Float
+worldWidth = 2560
+
+worldHeight :: Float
+worldHeight = 1920
+
 fullWidth :: Float
 fullWidth = fromIntegral width*viewportScale
 
@@ -97,7 +103,7 @@ loadTextures = do
                                     <*> loadBMP "images/monster-hunting-right.bmp"
                                     <*> loadBMP "images/monster-hunting-left.bmp"
                                     <*> loadBMP "images/monster-hunting-right.bmp"
-    backgroundTexture <- loadBMP "images/background-large.bmp"
+    backgroundTexture <- loadBMP "images/background-tile.bmp"
     return Textures { background = backgroundTexture
                     , player = playerTextureSet
                     , monsterWalking = monsterWalkingSet
@@ -137,10 +143,10 @@ movePlayer direction player@(Player (xpos, ypos) _) False increment
          | otherwise = move direction player increment
 
 outsideOfLimits :: (Float, Float) -> Float -> Bool
-outsideOfLimits (xmon, ymon) size = xmon > fromIntegral width/2 - size/2 ||
-                                    xmon < (-(fromIntegral width)/2 + size/2) ||
-                                    ymon > fromIntegral height/2 - size/2 ||
-                                    ymon < (-(fromIntegral height)/2 + size/2)
+outsideOfLimits (xmon, ymon) size = xmon > worldWidth/2 - size/2 ||
+                                    xmon < ((-worldWidth)/2 + size/2) ||
+                                    ymon > worldHeight/2 - size/2 ||
+                                    ymon < ((-worldHeight)/2 + size/2)
 
 move a b c | trace ("move " ++ show b) False = undefined
 move (True, _, _, _) (Player (xpos, ypos) (Just (PlayerMovement WalkLeft n))) increment = Player (xpos - increment, ypos) (Just $ PlayerMovement WalkLeft ((n+1) `mod` 4))
@@ -203,13 +209,32 @@ stepInCurrentDirection WalkLeft (xpos, ypos)  speed = (xpos - speed, ypos)
 stepInCurrentDirection WalkRight (xpos, ypos) speed = (xpos + speed, ypos)
 
 renderFrame window glossState textures (Player (xpos, ypos) playerDir) (Monster (xmon, ymon) status) gameOver viewport = do
-   displayPicture (width, height) black glossState (viewPortScale viewport) $ 
+   displayPicture (width, height) black glossState (viewPortScale viewport) $
      Pictures $ gameOngoing gameOver
-                             [applyViewPortToPicture viewport (background textures),
-                              renderPlayer playerDir (player textures),
-                              uncurry translate (viewPortTranslate viewport) $ renderMonster status xmon ymon (monsterWalking textures) (monsterHunting textures) ]
+                             [ uncurry translate (viewPortTranslate viewport) $ tiledBackground (background textures) worldWidth worldHeight
+                             , renderPlayer playerDir (player textures)
+                             , uncurry translate (viewPortTranslate viewport) $ renderMonster status xmon ymon (monsterWalking textures) (monsterHunting textures) ]
    swapBuffers window
 
+-- tiling: pictures translated to the appropriate locations to fill up the given width and heights
+-- I scaled the tile to the greatest common factor of the width and height, but it should work to fit the actual width and height
+-- which potentially means translating the tiles back a bit not to go over the edge
+tileSize :: Float
+tileSize = 160
+tiledBackground texture width height = Pictures $ map (\a ->  ((uncurry translate) a) texture) $ translateMatrix worldWidth worldHeight
+
+-- what we want: 640, 480
+-- -320--x--(-160)--x--0--x--160--x--320
+--      -240      -80    80      240
+-- -240--x--(-80)--x--80--x--240
+--      -160       0     160
+translateMatrix :: Float -> Float -> [(Float, Float)]
+translateMatrix w h = concat $ map (zip xTiles)
+                             $ map (replicate (length xTiles)) yTiles
+                      where xTiles = [lowerbound w, lowerbound w + tileSize..higherbound w]
+                            yTiles = [lowerbound h, lowerbound h + tileSize..higherbound h]
+                            higherbound size = size/2 - tileSize/2
+                            lowerbound size = -(higherbound size)
 
 --renderPlayer :: Float -> Float -> Maybe Direction -> TextureSet -> Picture
 renderPlayer (Just (PlayerMovement WalkUp 0)) textureSet = backs textureSet !! 0
