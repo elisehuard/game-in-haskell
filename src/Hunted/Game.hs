@@ -1,6 +1,7 @@
 {-# LANGUAGE RecursiveDo #-}
 module Hunted.Game (
   hunted
+, stone
 ) where
 
 import Hunted.GameTypes
@@ -33,7 +34,7 @@ playerSize = 20
 monsterSize = 20
 monsterSpeed = 5
 
-hunted win (width, height) directionKey randomGenerator textures glossState sounds = mdo
+hunted win (width, height) directionKey shootKey randomGenerator textures glossState sounds = mdo
     let worldDimensions = (worldWidth, worldHeight)
     player <- transfer2 initialPlayer (\p dead dK -> movePlayer p dK dead 10 worldDimensions) directionKey gameOver'
     randomNumber <- stateful (undefined, randomGenerator) nextRandom
@@ -44,6 +45,7 @@ hunted win (width, height) directionKey randomGenerator textures glossState soun
     viewport <- transfer initialViewport viewPortMove player
     statusChange <- transfer2 Nothing monitorStatusChange monster monster'
     endOfGame <- Elerea.until gameOver
+    shoot <- edgify shootKey
 
     let hunting = stillHunting <$> monster <*> gameOver
         renderState = RenderState <$> player <*> monster <*> gameOver <*> viewport
@@ -52,6 +54,17 @@ hunted win (width, height) directionKey randomGenerator textures glossState soun
     return $ outputFunction win glossState textures (width, height) sounds <$> renderState <*> soundState
     where playerEaten player monster = distance player monster < (playerSize^2  :: Float)
           nextRandom (a, g) = random g
+
+edgify s = do
+  s' <- delay (False, False, False, False) s
+  return $ s' >>= \x -> throttle x s
+
+throttle (a, d, w, s) sig
+   | a = return (False, d, w, s)
+   | d = return (a, False, w, s)
+   | w = return (a, d, False, s)
+   | s = return (a, d, w, False)
+   | otherwise = sig
 
 stillHunting _                       True  = False
 stillHunting (Monster _ (Hunting _)) False = True

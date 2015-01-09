@@ -8,6 +8,7 @@ module Hunted.Backend (
 
 import "GLFW-b" Graphics.UI.GLFW as GLFW
 import Control.Monad (when)
+import Control.Applicative ((<$>), (<*>))
 
 withWindow :: Int -> Int -> String -> (GLFW.Window -> IO ()) -> IO ()
 withWindow width height title f = do
@@ -35,13 +36,18 @@ isPress KeyState'Pressed   = True
 isPress KeyState'Repeating = True
 isPress _                  = False
 
-readInput :: Window -> ((Bool, Bool, Bool, Bool) -> IO ()) -> IO ()
-readInput window directionKeySink = do
+readInput :: Window -> ((Bool, Bool, Bool, Bool) -> IO ()) -> ((Bool, Bool, Bool, Bool) -> IO ()) -> IO ()
+readInput window directionKeySink shootKeySink = do
     pollEvents
     l <- keyIsPressed window Key'Left
     r <- keyIsPressed window Key'Right
     u <- keyIsPressed window Key'Up
     d <- keyIsPressed window Key'Down
     directionKeySink (l, r, u, d)
+    a <- keyIsPressed window Key'A
+    d <- keyIsPressed window Key'D
+    w <- keyIsPressed window Key'W
+    s <- keyIsPressed window Key'S
+    shootKeySink $ (a, d, w, s)
 
 exitKeyPressed window = keyIsPressed window Key'Escape
