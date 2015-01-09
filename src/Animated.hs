@@ -148,7 +148,6 @@ outsideOfLimits (xmon, ymon) size = xmon > worldWidth/2 - size/2 ||
                                     ymon > worldHeight/2 - size/2 ||
                                     ymon < ((-worldHeight)/2 + size/2)
 
-move a b c | trace ("move " ++ show b) False = undefined
 move (True, _, _, _) (Player (xpos, ypos) (Just (PlayerMovement WalkLeft n))) increment = Player (xpos - increment, ypos) (Just $ PlayerMovement WalkLeft ((n+1) `mod` 4))
 move (True, _, _, _) (Player (xpos, ypos) _) increment = Player (xpos - increment, ypos) $ Just $ PlayerMovement WalkLeft 0
 move (_, True, _, _) (Player (xpos, ypos) (Just (PlayerMovement WalkRight n))) increment = Player (xpos + increment, ypos) (Just $ PlayerMovement WalkRight ((n+1) `mod` 4))
@@ -186,7 +185,6 @@ huntingDirection _ _ = WalkRight
 
 -- turn in random direction
 --wander :: Direction -> Monster -> Monster
-wander a b | trace ("wander " ++ show b) False = undefined
 wander r (Monster (xmon, ymon) (Wander _ 0)) = Monster (xmon, ymon) (Wander r wanderDist)
 wander r (Monster (xmon, ymon) (Hunting _)) = Monster (xmon, ymon) (Wander r wanderDist)
 -- go straight
