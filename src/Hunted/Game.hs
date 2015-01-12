@@ -104,6 +104,22 @@ wanderOrHunt _ _ _ True monster = monster
 wanderOrHunt dimensions player (r, _) False monster = if close player monster
                                                        then hunt player monster
                                                        else wander r monster dimensions
+move keys (Player (xpos, ypos) (Just (PlayerMovement direction n))) increment 
+        | dirFrom keys == direction = Player ((xpos, ypos) `plus` increment `times` stepInDirection direction) (Just $ PlayerMovement direction ((n+1) `mod` 4))
+        | otherwise                 = Player ((xpos, ypos) `plus` increment `times` stepInDirection (dirFrom keys)) (Just $ PlayerMovement (dirFrom keys) 0)
+move keys (Player (xpos, ypos) Nothing) increment = Player ((xpos, ypos) `plus` increment `times` stepInDirection (dirFrom keys)) (Just $ PlayerMovement (dirFrom keys) 0)
+
+dirFrom (l, r, u, d)
+  | l = WalkLeft
+  | r = WalkRight
+  | u = WalkUp
+  | d = WalkDown
+  | otherwise = error "no direction from keys"
+
+stepInDirection WalkLeft  = (-1, 0)
+stepInDirection WalkRight = (1, 0)
+stepInDirection WalkUp    = (0, 1)
+stepInDirection WalkDown  = (0, -1)
 
 close player monster = distance player monster < huntingDist^2
 
@@ -140,11 +156,7 @@ continueDirection WalkLeft True = WalkRight
 continueDirection WalkRight True = WalkLeft
 continueDirection direction False = direction
 
-stepInCurrentDirection WalkUp (xpos, ypos)    speed = (xpos, ypos + speed)
-stepInCurrentDirection WalkDown (xpos, ypos)  speed = (xpos, ypos - speed)
-stepInCurrentDirection WalkLeft (xpos, ypos)  speed = (xpos - speed, ypos)
-stepInCurrentDirection WalkRight (xpos, ypos) speed = (xpos + speed, ypos)
-
+stepInCurrentDirection direction (xpos, ypos) speed = speed `times` (stepInDirection direction) `plus` (xpos, ypos)
 
 monitorStatusChange (Monster _ (Hunting _)) (Monster _ (Wander _ _)) pace = Just Danger
 monitorStatusChange (Monster _ (Wander _ _)) (Monster _ (Hunting _)) pace = Just Safe

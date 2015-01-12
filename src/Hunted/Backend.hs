@@ -44,10 +44,9 @@ readInput window directionKeySink shootKeySink = do
     u <- keyIsPressed window Key'Up
     d <- keyIsPressed window Key'Down
     directionKeySink (l, r, u, d)
-    a <- keyIsPressed window Key'A
-    d <- keyIsPressed window Key'D
-    w <- keyIsPressed window Key'W
-    s <- keyIsPressed window Key'S
-    shootKeySink $ (a, d, w, s)
+    shootKeySink =<< (,,,) <$> keyIsPressed window Key'A
+                           <*> keyIsPressed window Key'D
+                           <*> keyIsPressed window Key'W
+                           <*> keyIsPressed window Key'S
 
 exitKeyPressed window = keyIsPressed window Key'Escape

@@ -4,6 +4,19 @@ import System.Random
 import Graphics.Gloss.Data.ViewPort (ViewPort)
 
 type Pos = (Float, Float)
+data Vec num = Vec num num
+
+dist :: Pos -> Pos -> Float
+dist (x1, y1) (x2, y2) = (x2 - x1)^2 + (y2 - y1)^2
+
+times :: Float -> Pos -> Pos
+times a (x,y) = (a*x, a*y)
+infixl 7 `times`
+
+plus :: Pos -> Pos -> Pos
+plus (a,b) (c,d) = (a + c, b + d)
+infixl 6 `plus`
+
 data Player = Player { position :: Pos, movement :: Maybe PlayerMovement }
                deriving Show
 data PlayerMovement = PlayerMovement { dir :: Direction, step :: Int }
@@ -15,7 +28,7 @@ data MonsterStatus = Wander Direction Int
                    | Hunting Direction
                deriving Show
 data Direction = WalkUp | WalkDown | WalkLeft | WalkRight
-                 deriving (Show, Enum, Bounded)
+                 deriving (Show, Enum, Bounded, Eq)
 
 instance Random Direction where
   randomR (a, b) g = case randomR (fromEnum a, fromEnum b) g of
