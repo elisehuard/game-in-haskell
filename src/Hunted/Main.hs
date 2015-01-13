@@ -19,6 +19,7 @@ height = 480
 main :: IO ()
 main = do
     (directionKey, directionKeySink) <- external (False, False, False, False)
+    (shootKey, shootKeySink) <- external (False, False, False, False)
     randomGenerator <- newStdGen
     glossState <- initState
     textures <- loadTextures
@@ -26,9 +27,9 @@ main = do
       withSound $ \_ _ -> do
           sounds <- loadSounds
           backgroundMusic (backgroundTune sounds)
-          network <- start $ hunted win (width,height) directionKey randomGenerator textures glossState sounds
+          network <- start $ hunted win (width,height) directionKey shootKey randomGenerator textures glossState sounds
           fix $ \loop -> do
-               readInput win directionKeySink
+               readInput win directionKeySink shootKeySink
                join network
                threadDelay 20000
                esc <- exitKeyPressed win

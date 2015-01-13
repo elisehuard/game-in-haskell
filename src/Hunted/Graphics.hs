@@ -34,7 +34,7 @@ loadTextures = do
                                     <*> loadBMP "images/monster-hunting-right.bmp"
                                     <*> loadBMP "images/monster-hunting-left.bmp"
                                     <*> loadBMP "images/monster-hunting-right.bmp"
-    backgroundTexture <- loadBMP "images/background-large.bmp"
+    backgroundTexture <- loadBMP "images/background-tile.bmp"
     return Textures { background = backgroundTexture
                     , player = playerTextureSet
                     , monsterWalking = monsterWalkingSet
@@ -45,12 +45,14 @@ loadAnims path1 path2 path3 = fun <$> loadBMP path1 <*> loadBMP path2 <*> loadBM
                               where fun a b c = [a,b,c]
 
 
-renderFrame window glossState textures dimensions (RenderState (Player (xpos, ypos) playerDir) (Monster (xmon, ymon) status) gameOver viewport) = do
+renderFrame window glossState textures dimensions (worldWidth, worldHeight) (RenderState (Player (xpos, ypos) playerDir) monster gameOver viewport bolts) = do
    displayPicture dimensions black glossState (viewPortScale viewport) $ 
-     Pictures $ gameOngoing gameOver
-                              renderPlayer playerDir (player textures),
-                              uncurry translate (viewPortTranslate viewport) $ renderMonster status xmon ymon (monsterWalking textures) (monsterHunting textures) ]
-                             [ uncurry translate (viewPortTranslate viewport) $ tiledBackground (background textures) worldWidth worldHeight,
+     Pictures $ gameOngoing gameOver $
+                             [ uncurry translate (viewPortTranslate viewport) $ tiledBackground (background textures) worldWidth worldHeight
+                             , renderPlayer playerDir (player textures)
+                             , uncurry translate (viewPortTranslate viewport) $ renderMonster monster (monsterWalking textures) (monsterHunting textures)
+                             , uncurry translate (viewPortTranslate viewport) $ renderHealthBar monster ]
+                              ++ (map (uncurry translate (viewPortTranslate viewport) . renderBolt) bolts)
    swapBuffers window
 
 -- tiling: pictures translated to the appropriate locations to fill up the given width and heights
@@ -92,15 +94,30 @@ renderPlayer (Just (PlayerMovement WalkLeft 2)) textureSet = lefts textureSet !!
 renderPlayer (Just (PlayerMovement WalkLeft 3)) textureSet = lefts textureSet !! 2
 renderPlayer Nothing textureSet = fronts textureSet !! 0
 
-renderMonster :: MonsterStatus -> Float -> Float -> TextureSet -> TextureSet -> Picture
-renderMonster (Hunting WalkLeft) xpos ypos _ textureSet = translate xpos ypos $ left textureSet
-renderMonster (Hunting WalkRight) xpos ypos _ textureSet = translate xpos ypos $ right textureSet
-renderMonster (Wander WalkUp n) xpos ypos textureSet _ = translate xpos ypos $ back textureSet
-renderMonster (Wander WalkDown n) xpos ypos textureSet _ = translate xpos ypos $ front textureSet
-renderMonster (Wander WalkLeft n) xpos ypos textureSet _ = translate xpos ypos $ rotate (16* fromIntegral n) $ left textureSet
-renderMonster (Wander WalkRight n) xpos ypos textureSet _ = translate xpos ypos $ rotate (16* fromIntegral n) $ right textureSet
+renderMonster :: Monster -> TextureSet -> TextureSet -> Picture
+renderMonster (Monster (xpos, ypos) (Hunting WalkLeft) _) _ textureSet = translate xpos ypos $ left textureSet
+renderMonster (Monster (xpos, ypos) (Hunting WalkRight) _) _ textureSet = translate xpos ypos $ right textureSet
+renderMonster (Monster (xpos, ypos) (Hunting WalkUp) _) _ textureSet = translate xpos ypos $ back textureSet
+renderMonster (Monster (xpos, ypos) (Hunting WalkDown) _) _ textureSet = translate xpos ypos $ front textureSet
+renderMonster (Monster (xpos, ypos) (Wander WalkUp _) _) textureSet _ = translate xpos ypos $ back textureSet
+renderMonster (Monster (xpos, ypos) (Wander WalkDown _) _) textureSet _ = translate xpos ypos $ front textureSet
+renderMonster (Monster (xpos, ypos) (Wander WalkLeft n) _) textureSet _ = translate xpos ypos $ rotate (16* fromIntegral n) $ left textureSet
+renderMonster (Monster (xpos, ypos) (Wander WalkRight n) _) textureSet _ = translate xpos ypos $ rotate ((-16)* fromIntegral n) $ right textureSet
+
+renderBolt (Bolt (xpos, ypos) _ _ _) = translate xpos ypos $ Color red $ circleSolid 5
+
+-- [x x x x x]
+-- [0 0]
+-- 1 centered around xmon, size bar 
+-- 2 centered around xmon - bar/2 + health/2
+numberOfLives = 4
+healthBarLength = 40
+healthBarWidth = 5
+renderHealthBar (Monster (xmon, ymon) _ health) = Pictures [ translate xmon (ymon + 30) $ Color black $ rectangleSolid healthBarLength healthBarWidth
+                                                           , translate (xmon - healthBarLength/2 + health*healthBarLength/(numberOfLives*2)) (ymon + 30) $ Color red $ rectangleSolid (health*healthBarLength/numberOfLives) healthBarWidth ]
 
 -- adds gameover text if appropriate
-gameOngoing :: Bool -> [Picture] -> [Picture]
-gameOngoing gameOver pics = if gameOver then pics ++ [Color black $ translate (-100) 0 $ Scale 0.3 0.3 $ Text "Game Over"]
-                                        else pics
+gameOngoing :: Maybe Ending -> [Picture] -> [Picture]
+gameOngoing (Just Lose) pics =  pics ++ [Color black $ translate (-100) 0 $ Scale 0.3 0.3 $ Text "Game Over"]
+gameOngoing (Just Win) pics =  pics ++ [Color black $ translate (-100) 0 $ Scale 0.3 0.3 $ Text "You win!"]
+gameOngoing Nothing pics =  pics

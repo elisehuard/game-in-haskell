@@ -2,6 +2,7 @@ module Hunted.GameTypes where
 
 import System.Random
 import Graphics.Gloss.Data.ViewPort (ViewPort)
+import Data.Monoid
 
 type Pos = (Float, Float)
 data Vec num = Vec num num
@@ -17,11 +18,13 @@ plus :: Pos -> Pos -> Pos
 plus (a,b) (c,d) = (a + c, b + d)
 infixl 6 `plus`
 
+type Health = Float
+
 data Player = Player { position :: Pos, movement :: Maybe PlayerMovement }
                deriving Show
 data PlayerMovement = PlayerMovement { dir :: Direction, step :: Int }
                deriving Show
-data Monster = Monster Pos MonsterStatus
+data Monster = Monster Pos MonsterStatus Health
                deriving Show
 
 data MonsterStatus = Wander Direction Int
@@ -35,7 +38,14 @@ instance Random Direction where
                        (x, g') -> (toEnum x, g')
   random g = randomR (minBound, maxBound) g
 
-data RenderState = RenderState Player Monster Bool ViewPort
+data RenderState = RenderState Player Monster (Maybe Ending) ViewPort [Bolt]
 data SoundState = SoundState (Maybe StatusChange) Bool Bool
 
 data StatusChange = Danger | Safe
+
+type Range = Int
+data Bolt = Bolt Pos Direction Range Bool
+              deriving Show
+
+data Ending = Win | Lose
+              deriving (Show, Eq)
