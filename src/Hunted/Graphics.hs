@@ -104,7 +104,7 @@ renderMonster (Monster (xpos, ypos) (Wander WalkDown _) _) textureSet _ = transl
 renderMonster (Monster (xpos, ypos) (Wander WalkLeft n) _) textureSet _ = translate xpos ypos $ rotate (16* fromIntegral n) $ left textureSet
 renderMonster (Monster (xpos, ypos) (Wander WalkRight n) _) textureSet _ = translate xpos ypos $ rotate ((-16)* fromIntegral n) $ right textureSet
 
-renderBolt (Bolt (xpos, ypos) _ _ _) = translate xpos ypos $ Color red $ circleSolid 5
+renderBolt (Bolt (xpos, ypos) _ _ _) = translate xpos ypos $ Color (greyN 0.7) $ circleSolid 5
 
 -- [x x x x x]
 -- [0 0]
