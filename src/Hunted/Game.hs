@@ -59,7 +59,12 @@ hunted win (width, height) directionKey shootKey randomGenerator textures glossS
 
     let hunting = stillHunting <$> monster <*> gameOver
         renderState = RenderState <$> player <*> monster <*> gameOver <*> viewport <*> bolts
-        soundState  = SoundState <$> statusChange <*> playerScreams <*> hunting
+        soundState  = SoundState <$> statusChange
+                                 <*> playerScreams
+                                 <*> hunting
+                                 <*> monsterScreams
+                                 <*> (hasAny <$> shoot)
+                                 <*> (boltHit <$> monster <*> bolts)
 
     return $ outputFunction win glossState textures (width, height) sounds <$> renderState <*> soundState
     where playerEaten player monster
@@ -148,8 +153,11 @@ hitOrMiss bolts monster@(Monster (xmon, ymon) status health) =
     Monster (xmon, ymon) status (health - (hits monster bolts))
     where hits monster bolts = fromIntegral $ length
                                             $ filter (< (monsterSize/2)^2) (boltDistances monster bolts)
-          boltDistances (Monster (xmon, ymon) _ _) bolts =
-              map (\(Bolt (xbolt, ybolt) _ _ _) -> dist (xmon, ymon) (xbolt, ybolt)) bolts
+boltDistances :: Monster -> [Bolt] -> [Float]
+boltDistances (Monster (xmon, ymon) _ _) bolts =
+    map (\(Bolt (xbolt, ybolt) _ _ _) -> dist (xmon, ymon) (xbolt, ybolt)) bolts
+
+boltHit monster bolts = any (== True) $ map (< (monsterSize/2)^2) (boltDistances monster bolts)
 
 --wanderOrHunt a b c d e f | trace ("monsterState " ++ show f ++ " bolts: " ++ show e) False = undefined
 wanderOrHunt _ _ _ (Just _) _ monster = monster
@@ -200,9 +208,10 @@ continueDirection direction False = direction
 
 stepInCurrentDirection direction (xpos, ypos) speed = speed `times` (stepInDirection direction) `plus` (xpos, ypos)
 
-monitorStatusChange (Monster _ (Hunting _) _) (Monster _ (Wander _ _) _) pace = Just Danger
-monitorStatusChange (Monster _ (Wander _ _) _) (Monster _ (Hunting _) _) pace = Just Safe
-monitorStatusChange _ _ pace = Nothing
+monitorStatusChange (Monster _ _ num) (Monster _ _ 0) _ = if num > 0 then Just Safe else Nothing
+monitorStatusChange (Monster _ (Hunting _) _) (Monster _ (Wander _ _) _) _ = Just Danger
+monitorStatusChange (Monster _ (Wander _ _) _) (Monster _ (Hunting _) _) _ = Just Safe
+monitorStatusChange _ _ _ = Nothing
 
 -- output functions
 outputFunction window glossState textures dimensions sounds renderState soundState =  (renderFrame window glossState textures dimensions (worldWidth, worldHeight) renderState) >> (playSounds sounds soundState)

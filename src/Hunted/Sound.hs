@@ -12,10 +12,14 @@ import Sound.ALUT hiding (Static)
 import System.IO ( hPutStrLn, stderr )
 import Data.List (intersperse)
 import Control.Monad (when, unless)
+import Control.Applicative ((<$>), (<*>))
 
 data Sounds = Sounds { backgroundTune :: Source
                      , shriek :: Source
-                     , bite :: Source }
+                     , bite :: Source
+                     , groan :: Source
+                     , twang :: Source
+                     , thump :: Source }
 
 -- convenience function to abstract the ALUT context
 withSound = withProgNameAndArgs runALUT
@@ -24,13 +28,20 @@ withSound = withProgNameAndArgs runALUT
 -- music: https://www.freesound.org/people/Thirsk/sounds/121035/
 -- shriek: https://www.freesound.org/people/dan2008ds/sounds/175169/
 -- bite: https://www.freesound.org/people/dan2008ds/sounds/175169/
+-- twang https://www.freesound.org/people/cubic.archon/sounds/44192/
+-- thump https://www.freesound.org/people/fons/sounds/101362/
+-- groan https://www.freesound.org/people/dag451/sounds/118336/
+
 loadSounds :: IO Sounds
 loadSounds = do
-    music <- loadSound "sounds/oboe-loop.wav"
-    shriek <- loadSound "sounds/shriek.wav"
     bite <- loadSound "sounds/bite.wav"
     sourceGain bite $= 0.5
-    return $ Sounds music shriek bite
+    Sounds <$> loadSound "sounds/oboe-loop.wav"
+           <*> loadSound "sounds/shriek.wav"
+           <*> return bite
+           <*> loadSound "sounds/groan.wav"
+           <*> loadSound "sounds/twang.wav"
+           <*> loadSound "sounds/thump.wav"
 
 loadSound path = do
     buf <- createBuffer (File path)
@@ -47,11 +58,14 @@ paceToPitch Safe = 1
 paceToPitch Danger = 2
 
 playSounds :: Sounds -> SoundState -> IO ()
-playSounds (Sounds music shriek bite) (SoundState mbPace endOfGame hunting) = do
-  changeBackgroundMusic music mbPace 
-  when endOfGame $ playSound shriek
-  if hunting then playContinuousSound bite
-             else stop [bite]
+playSounds sounds soundState = do
+  changeBackgroundMusic (backgroundTune sounds) (mood soundState)
+  when (playerScreams soundState) $ playSound (shriek sounds)
+  when (monsterDies soundState) $ playSound (groan sounds)
+  when (shoot soundState) $ playSound (twang sounds)
+  when (hit soundState) $ playSound (thump sounds)
+  if (hunting soundState) then playContinuousSound (bite sounds)
+                          else stop [bite sounds]
 
 changeBackgroundMusic source (Just pace) = pitch source $= (paceToPitch pace)
 changeBackgroundMusic source Nothing     = return ()
