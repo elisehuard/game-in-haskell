@@ -54,7 +54,16 @@ hunted win (width, height) directionKey shootKey randomGenerator textures glossS
     playerScreams <- Elerea.until ((== (Just Lose)) <$> gameOver)
     monsterScreams <- Elerea.until ((== (Just Win)) <$> gameOver)
     shoot <- edgify shootKey
-    bolts <- transfer3 [] (manageBolts worldDimensions) shoot player monster
+    -- takes (bool, bool, bool, bool) and player, output SignalGen [Signal Bolt]
+    let bolt direction range position = stateful (Bolt position direction range False) moveBolt
+        mkShot shot player = if hasAny shot
+                              then (:[]) <$> bolt (dirFrom shot) boltRange (position player)
+                              else return []
+    -- mkShot applied to Signal, so Signal (SignalGen [Signal Bolt])
+    -- generator -> SignalGen (Signal [Signal Bolt])
+    -- newBolts Signal [Signal Bolt]
+    newBolts <- generator (mkShot <$> shoot <*> player)
+    bolts <- collection newBolts (boltIsAlive worldDimensions <$> monster)
     bolts' <- delay [] bolts
 
     let hunting = stillHunting <$> monster <*> gameOver
@@ -76,8 +85,20 @@ hunted win (width, height) directionKey shootKey randomGenerator textures glossS
           gameEnds player monster = maybe (monsterDies monster) Just (playerEaten player monster)
           nextRandom (_, g) = random g
 
--- SignalGen (Signal Bolt)
-bolt direction range position = stateful (Bolt position direction range False) moveBolt
+-- FRP
+collection :: (Signal [Signal Bolt]) -> Signal (Bolt -> Bool) -> SignalGen (Signal [Bolt])
+collection source isAlive = mdo
+  boltSignals <- delay [] (map snd <$> boltsAndSignals')
+  -- bolts: SignalGen [Signal Bolt])
+  -- add new bolt signals
+  bolts <- memo (liftA2 (++) source boltSignals)
+  -- boltsAndSignals type: SignalGen (Signal [Bolt], [Signal Bolt])
+  let boltsAndSignals = zip <$> (sequence =<< bolts) <*> bolts
+  boltsAndSignals' <- memo (filter <$> ((.fst) <$> isAlive) <*> boltsAndSignals) -- filter out
+  -- return
+  return $ map fst <$> boltsAndSignals'
+
+-- FRP
 
 hasAny (l, r, u, d) = l || r || u || d
 
