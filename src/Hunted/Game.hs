@@ -84,10 +84,16 @@ hasAny (l, r, u, d) = l || r || u || d
 moveBolt (Bolt (xpos, ypos) direction range hit) = Bolt (boltSpeed `times` (stepInDirection direction) `plus` (xpos, ypos)) direction (range - 1) hit
 
 manageBolts fdimensions shoot player monster bolts =
-    map moveBolt $ map (hitMonster monster) $ filter (boltStillGoing fdimensions) $ addNew bolts
+    map moveBolt $ filter (boltIsAlive fdimensions monster) $ addNew bolts
         where addNew bolts = if hasAny shoot
                                then (Bolt (position player) (dirFrom shoot) boltRange False):bolts
                                else bolts
+
+boltIsAlive worldDimensions monster bolt = (not (hasHit monster bolt)) && boltStillGoing worldDimensions bolt
+
+hasHit (Monster (xmon, ymon) _ _) (Bolt (x, y) dir range hit)
+  | dist (xmon, ymon) (x, y) < ((monsterSize/2)^2) = True
+  | otherwise = False
 
 edgify s = do
   s' <- delay (False, False, False, False) s
@@ -104,11 +110,6 @@ throttle (a, d, w, s) sig
 --boltStillGoing :: (Float, Float) -> Monster -> Bolt -> Bool
 boltStillGoing (width, height) (Bolt (x, y) _ range hit) =
     (not hit) && (range > 0) && x < width/2 && y < height/2
-
--- flips a switch when the bolt has hit the monster
-hitMonster (Monster (xmon, ymon) _ _) (Bolt (x, y) dir range hit)
-  | dist (xmon, ymon) (x, y) < (monsterSize/2)^2 = Bolt (x,y) dir range True
-  | otherwise = Bolt (x,y) dir range hit
 
 stillHunting _                         (Just _)  = False
 stillHunting (Monster _ (Hunting _) 0) _     = False
