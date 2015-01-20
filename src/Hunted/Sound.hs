@@ -1,3 +1,4 @@
+{-# LANGUAGE ScopedTypeVariables #-}
 module Hunted.Sound (
   withSound
 , loadSounds
@@ -22,6 +23,7 @@ data Sounds = Sounds { backgroundTune :: Source
                      , thump :: Source }
 
 -- convenience function to abstract the ALUT context
+withSound :: forall a. Runner a
 withSound = withProgNameAndArgs runALUT
 
 -- sounds
@@ -34,15 +36,16 @@ withSound = withProgNameAndArgs runALUT
 
 loadSounds :: IO Sounds
 loadSounds = do
-    bite <- loadSound "sounds/bite.wav"
-    sourceGain bite $= 0.5
+    biteSource <- loadSound "sounds/bite.wav"
+    sourceGain biteSource $= 0.5
     Sounds <$> loadSound "sounds/oboe-loop.wav"
            <*> loadSound "sounds/shriek.wav"
-           <*> return bite
+           <*> return biteSource
            <*> loadSound "sounds/groan.wav"
            <*> loadSound "sounds/twang.wav"
            <*> loadSound "sounds/thump.wav"
 
+loadSound :: FilePath -> IO Source
 loadSound path = do
     buf <- createBuffer (File path)
     source <- genObjectName
@@ -54,6 +57,8 @@ backgroundMusic source = do
         loopingMode source $= Looping
         play [source]
 
+-- ALUT internal float format
+paceToPitch :: StatusChange -> ALfloat
 paceToPitch Safe = 1
 paceToPitch Danger = 2
 
@@ -67,13 +72,16 @@ playSounds sounds soundState = do
   if (hunting soundState) then playContinuousSound (bite sounds)
                           else stop [bite sounds]
 
+changeBackgroundMusic :: Source -> Maybe StatusChange -> IO ()
 changeBackgroundMusic source (Just pace) = pitch source $= (paceToPitch pace)
-changeBackgroundMusic source Nothing     = return ()
+changeBackgroundMusic _       Nothing     = return ()
 
+playContinuousSound :: Source -> IO ()
 playContinuousSound source = do
         state <- get (sourceState source)
         unless (state == Playing) $ play [source]
 
+playSound :: Source -> IO ()
 playSound source = do
     play [source]
     -- Normally nothing should go wrong above, but one never knows...

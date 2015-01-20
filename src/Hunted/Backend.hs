@@ -49,4 +49,5 @@ readInput window directionKeySink shootKeySink = do
                            <*> keyIsPressed window Key'W
                            <*> keyIsPressed window Key'S
 
+exitKeyPressed :: Window -> IO Bool
 exitKeyPressed window = keyIsPressed window Key'Escape

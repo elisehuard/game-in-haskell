@@ -2,7 +2,6 @@ module Hunted.GameTypes where
 
 import System.Random
 import Graphics.Gloss.Data.ViewPort (ViewPort)
-import Data.Monoid
 
 type Pos = (Float, Float)
 data Vec num = Vec num num

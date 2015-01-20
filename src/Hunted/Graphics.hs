@@ -45,7 +45,17 @@ loadAnims path1 path2 path3 = fun <$> loadBMP path1 <*> loadBMP path2 <*> loadBM
                               where fun a b c = [a,b,c]
 
 
-renderFrame window glossState textures dimensions (worldWidth, worldHeight) (RenderState (Player (xpos, ypos) playerDir) monster gameOver viewport bolts) = do
+
+{- again, need to export gloss internal state for this signature, pull request required
+renderFrame :: Window
+               -> gloss-rendering-1.9.2.1:Graphics.Gloss.Internals.Rendering.State.State
+               -> Textures
+               -> (Int, Int)
+               -> (Float, Float)
+               -> RenderState
+               -> IO ()
+-}
+renderFrame window glossState textures dimensions (worldWidth, worldHeight) (RenderState (Player _ playerDir) monster gameOver viewport bolts) = do
    displayPicture dimensions black glossState (viewPortScale viewport) $ 
      Pictures $ gameOngoing gameOver $
                              [ uncurry translate (viewPortTranslate viewport) $ tiledBackground (background textures) worldWidth worldHeight
@@ -60,6 +70,8 @@ renderFrame window glossState textures dimensions (worldWidth, worldHeight) (Ren
 -- which potentially means translating the tiles back a bit not to go over the edge
 tileSize :: Float
 tileSize = 160
+
+tiledBackground :: Picture -> Float -> Float -> Picture
 tiledBackground texture width height = Pictures $ map (\a ->  ((uncurry translate) a) texture) $ translateMatrix width height
 
 -- what we want: 640, 480
@@ -75,7 +87,7 @@ translateMatrix w h = concat $ map (zip xTiles)
                             higherbound size = size/2 - tileSize/2
                             lowerbound size = -(higherbound size)
 
---renderPlayer :: Float -> Float -> Maybe Direction -> TextureSet -> Picture
+renderPlayer :: Maybe PlayerMovement -> TextureSet -> Picture
 renderPlayer (Just (PlayerMovement WalkUp 0)) textureSet = backs textureSet !! 0
 renderPlayer (Just (PlayerMovement WalkUp 1)) textureSet = backs textureSet !! 1
 renderPlayer (Just (PlayerMovement WalkUp 2)) textureSet = backs textureSet !! 0
@@ -104,15 +116,23 @@ renderMonster (Monster (xpos, ypos) (Wander WalkDown _) _) textureSet _ = transl
 renderMonster (Monster (xpos, ypos) (Wander WalkLeft n) _) textureSet _ = translate xpos ypos $ rotate (16* fromIntegral n) $ left textureSet
 renderMonster (Monster (xpos, ypos) (Wander WalkRight n) _) textureSet _ = translate xpos ypos $ rotate ((-16)* fromIntegral n) $ right textureSet
 
+renderBolt :: Bolt -> Picture
 renderBolt (Bolt (xpos, ypos) _ _ _) = translate xpos ypos $ Color (greyN 0.7) $ circleSolid 5
 
 -- [x x x x x]
 -- [0 0]
 -- 1 centered around xmon, size bar 
 -- 2 centered around xmon - bar/2 + health/2
+numberOfLives :: Float
 numberOfLives = 4
+
+healthBarLength :: Float
 healthBarLength = 40
+
+healthBarWidth :: Float
 healthBarWidth = 5
+
+renderHealthBar :: Monster -> Picture
 renderHealthBar (Monster (xmon, ymon) _ health) = Pictures [ translate xmon (ymon + 30) $ Color black $ rectangleSolid healthBarLength healthBarWidth
                                                            , translate (xmon - healthBarLength/2 + health*healthBarLength/(numberOfLives*2)) (ymon + 30) $ Color red $ rectangleSolid (health*healthBarLength/numberOfLives) healthBarWidth ]
 
