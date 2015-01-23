@@ -6,13 +6,17 @@ import System.Exit ( exitSuccess )
 import Control.Concurrent (threadDelay)
 import Control.Monad (when, unless)
 
+width, height :: Int
 width  = 640
 height = 480
 
 type Pos = Point
 data Player = Player {position :: Pos}
 
+initialPlayer :: Player
 initialPlayer = Player (200,200)
+
+playerSize :: Float
 playerSize = 20
 
 main :: IO ()
@@ -34,7 +38,7 @@ main = do
             unless k $ loop window newState glossState
 
 movePlayer :: (Bool, Bool, Bool, Bool) -> Player -> Float -> Player
-movePlayer direction player@(Player (xpos, ypos)) increment
+movePlayer direction player increment
          | outsideOfLimits (position (move direction player increment)) playerSize = player
          | otherwise = move direction player increment
 
@@ -44,6 +48,7 @@ outsideOfLimits (xmon, ymon) size = xmon > fromIntegral width/2 - size/2 ||
                                     ymon > fromIntegral height/2 - size/2 ||
                                     ymon < (-(fromIntegral height)/2 + size/2)
 
+move :: (Bool, Bool, Bool, Bool) -> Player -> Float -> Player
 move (True, _, _, _) (Player (xpos, ypos)) increment = Player ((xpos - increment), ypos)
 move (_, True, _, _) (Player (xpos, ypos)) increment = Player ((xpos + increment), ypos)
 move (_, _, True, _) (Player (xpos, ypos)) increment = Player (xpos, (ypos + increment))
@@ -55,11 +60,11 @@ renderFrame (Player (xpos, ypos)) window glossState = do
    swapBuffers window
 
 withWindow :: Int -> Int -> String -> (GLFW.Window -> IO ()) -> IO ()
-withWindow width height title f = do
+withWindow windowWidth windowHeight title f = do
     GLFW.setErrorCallback $ Just simpleErrorCallback
     r <- GLFW.init
     when r $ do
-        m <- GLFW.createWindow width height title Nothing Nothing
+        m <- GLFW.createWindow windowWidth windowHeight title Nothing Nothing
         case m of
           (Just win) -> do
               GLFW.makeContextCurrent m

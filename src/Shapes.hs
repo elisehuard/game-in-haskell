@@ -7,24 +7,25 @@ import System.Exit ( exitSuccess )
 import Control.Concurrent (threadDelay)
 import Control.Monad (when, unless)
 
-width  = 640
-height = 480
+windowWidth, windowHeight :: Int
+windowWidth  = 640
+windowHeight = 480
 
 main :: IO ()
 main = do
     glossState <- initState
-    withWindow width height "Game-Demo" $ \win -> do
+    withWindow windowWidth windowHeight "Game-Demo" $ \win -> do
           loop glossState win
           exitSuccess
-loop glossState window =  do
-    threadDelay 20000
-    pollEvents
-    renderFrame window glossState
-    k <- keyIsPressed window Key'Escape
-    unless k $ loop glossState window
+    where loop glossState window =  do
+            threadDelay 20000
+            pollEvents
+            renderFrame window glossState
+            k <- keyIsPressed window Key'Escape
+            unless k $ loop glossState window
 
 renderFrame window glossState = do
-     displayPicture (width, height) white glossState 1.0 $
+     displayPicture (windowWidth, windowHeight) white glossState 1.0 $
        Pictures
                 [ Color violet $ translate (-300) 100 $ polygon [((-10), 10), ((-10), 70), (20, 20), (20, 30)]
                 , Color red $ translate (-200) 100 $ line [(-30, -30), (-40, 30), (30, 40), (50, -20)]

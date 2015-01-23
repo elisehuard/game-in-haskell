@@ -1,20 +1,19 @@
 {-# LANGUAGE PackageImports, RecursiveDo #-}
+{-# OPTIONS_GHC -fno-warn-type-defaults #-}
 import "GLFW-b" Graphics.UI.GLFW as GLFW
 import Graphics.Gloss hiding (play)
 import Graphics.Gloss.Rendering
 import Graphics.Gloss.Data.ViewPort
 import System.Exit ( exitSuccess )
-import Control.Concurrent (threadDelay, forkIO)
-import Control.Monad (when, unless, join, forever)
+import Control.Concurrent (threadDelay)
+import Control.Monad (when, unless, join)
 import Control.Monad.Fix (fix)
 import Control.Applicative ((<*>), (<$>))
 import FRP.Elerea.Simple as Elerea
-import Foreign.C.Types (CDouble(..))
 import System.Random
-import Sound.ALUT hiding (Static)
+import Sound.ALUT hiding (Static, direction)
 import System.IO ( hPutStrLn, stderr )
 import Data.List (intersperse)
-import Debug.Trace
 
 type Pos = Point
 data Player = Player { position :: Pos, movement :: Maybe PlayerMovement }
@@ -25,10 +24,13 @@ data Monster = Monster Pos MonsterStatus
                deriving Show
 
 data MonsterStatus = Wander Direction Int
-                   | Hunting Direction
+                   | Hunting HuntingDirection
                deriving Show
 data Direction = WalkUp | WalkDown | WalkLeft | WalkRight
                  deriving (Show, Enum, Bounded)
+
+data HuntingDirection = HuntingLeft | HuntingRight
+                        deriving Show
 
 instance Random Direction where
   randomR (a, b) g = case randomR (fromEnum a, fromEnum b) g of
@@ -37,10 +39,10 @@ instance Random Direction where
 
 data TextureSet = TextureSet { front :: Picture, back :: Picture, left :: Picture, right :: Picture }
                 | PlayerTextureSet { fronts :: [Picture], backs :: [Picture], lefts :: [Picture], rights :: [Picture] }
-data Textures = Textures { background :: Picture
-                         , player :: TextureSet
-                         , monsterWalking :: TextureSet
-                         , monsterHunting :: TextureSet }
+data Textures = Textures { backgroundTexture :: Picture
+                         , playerTexture :: TextureSet
+                         , monsterWalkingTexture :: TextureSet
+                         , monsterHuntingTexture :: TextureSet }
 
 data RenderState = RenderState Player Monster Bool ViewPort
 data SoundState = SoundState (Maybe StatusChange) Bool Bool
@@ -60,26 +62,18 @@ initialMonster = Monster (200, 200) (Wander WalkUp wanderDist)
 initialViewport :: ViewPort
 initialViewport = ViewPort { viewPortTranslate = (0, 0), viewPortRotate = 0, viewPortScale = viewportScale }
 
+viewportScale :: Float
 viewportScale = 4
 
-width :: Int
+width, height :: Int
 width = 640
-
-height :: Int
 height = 480
 
-worldWidth :: Float
+worldWidth, worldHeight :: Float
 worldWidth = 2560
-
-worldHeight :: Float
 worldHeight = 1920
 
-fullWidth :: Float
-fullWidth = fromIntegral width*viewportScale
-
-fullHeight :: Float
-fullHeight = fromIntegral height*viewportScale
-
+playerSize, monsterSize, monsterSpeed :: Float
 playerSize = 20
 monsterSize = 20
 monsterSpeed = 5
@@ -91,7 +85,7 @@ main = do
     glossState <- initState
     textures <- loadTextures
     withWindow width height "Game-Demo" $ \win -> do
-      withProgNameAndArgs runALUT $ \progName args -> do
+      withProgNameAndArgs runALUT $ \_ _ -> do
           sounds <- loadSounds
           backgroundMusic (backgroundTune sounds)
           network <- start $ hunted win directionKey randomGenerator textures glossState sounds
@@ -118,20 +112,21 @@ loadTextures = do
                                     <*> loadBMP "images/monster-hunting-right.bmp"
                                     <*> loadBMP "images/monster-hunting-left.bmp"
                                     <*> loadBMP "images/monster-hunting-right.bmp"
-    backgroundTexture <- loadBMP "images/background-tile.bmp"
-    return Textures { background = backgroundTexture
-                    , player = playerTextureSet
-                    , monsterWalking = monsterWalkingSet
-                    , monsterHunting = monsterHuntingSet }
+    background <- loadBMP "images/background-tile.bmp"
+    return Textures { backgroundTexture = background
+                    , playerTexture = playerTextureSet
+                    , monsterWalkingTexture = monsterWalkingSet
+                    , monsterHuntingTexture = monsterHuntingSet }
 
 loadSounds :: IO Sounds
 loadSounds = do
-    music <- loadSound "sounds/oboe-loop.wav"
-    shriek <- loadSound "sounds/shriek.wav"
-    bite <- loadSound "sounds/bite.wav"
-    sourceGain bite $= 0.5
-    return $ Sounds music shriek bite
+    musicSource <- loadSound "sounds/oboe-loop.wav"
+    shriekSource <- loadSound "sounds/shriek.wav"
+    biteSource <- loadSound "sounds/bite.wav"
+    sourceGain biteSource $= 0.5
+    return $ Sounds musicSource shriekSource biteSource
 
+loadSound :: FilePath -> IO Source
 loadSound path = do
     buf <- createBuffer (File path)
     source <- genObjectName
@@ -159,8 +154,9 @@ hunted win directionKey randomGenerator textures glossState sounds = mdo
 
     return $ outputFunction win glossState textures sounds <$> renderState <*> soundState
     where playerEaten player monster = distance player monster < (playerSize^2  :: Float)
-          nextRandom (a, g) = random g
+          nextRandom (_, g) = random g
 
+stillHunting :: Monster -> Bool -> Bool
 stillHunting _                       True  = False
 stillHunting (Monster _ (Hunting _)) False = True
 stillHunting _                       False = False
@@ -169,6 +165,7 @@ viewPortMove :: Player -> ViewPort -> ViewPort
 viewPortMove (Player (x,y) _) (ViewPort { viewPortTranslate = _, viewPortRotate = rotation, viewPortScale = scaled }) =
         ViewPort { viewPortTranslate = ((-x), (-y)), viewPortRotate = rotation, viewPortScale = scaled }
 
+readInput :: Window -> ((Bool, Bool, Bool, Bool) -> IO ()) -> IO ()
 readInput window directionKeySink = do
     pollEvents
     l <- keyIsPressed window Key'Left
@@ -179,7 +176,7 @@ readInput window directionKeySink = do
 
 movePlayer :: (Bool, Bool, Bool, Bool) -> Player -> Bool -> Float -> Player
 movePlayer _ player True _ = player
-movePlayer direction player@(Player (xpos, ypos) _) False increment
+movePlayer direction player False increment
          | outsideOfLimits (position (move direction player increment)) playerSize = player
          | otherwise = move direction player increment
 
@@ -189,6 +186,7 @@ outsideOfLimits (xmon, ymon) size = xmon > worldWidth/2 - size/2 ||
                                     ymon > worldHeight/2 - size/2 ||
                                     ymon < ((-worldHeight)/2 + size/2)
 
+move :: (Bool, Bool, Bool, Bool) -> Player -> Float -> Player
 move (True, _, _, _) (Player (xpos, ypos) (Just (PlayerMovement WalkLeft n))) increment = Player (xpos - increment, ypos) (Just $ PlayerMovement WalkLeft ((n+1) `mod` 4))
 move (True, _, _, _) (Player (xpos, ypos) _) increment = Player (xpos - increment, ypos) $ Just $ PlayerMovement WalkLeft 0
 move (_, True, _, _) (Player (xpos, ypos) (Just (PlayerMovement WalkRight n))) increment = Player (xpos + increment, ypos) (Just $ PlayerMovement WalkRight ((n+1) `mod` 4))
@@ -200,14 +198,19 @@ move (_, _, _, True) (Player (xpos, ypos) _) increment = Player (xpos, (ypos - i
 
 move (False, False, False, False) (Player (xpos, ypos) _) _ = Player (xpos, ypos) Nothing
 
+wanderDist :: Int
 wanderDist = 45
+
+huntingDist :: Float
 huntingDist = 200
 
+wanderOrHunt :: RandomGen t => Player -> (Direction, t) -> Bool -> Monster -> Monster
 wanderOrHunt _ _ True monster = monster
 wanderOrHunt player (r, _) False monster = if close player monster
                                                 then hunt player monster
                                                 else wander r monster
 
+close :: Player -> Monster -> Bool
 close player monster = distance player monster < huntingDist^2
 
 distance :: Player -> Monster -> Float
@@ -218,15 +221,16 @@ distance (Player (xpos, ypos) _) (Monster (xmon, ymon) _) = (xpos - xmon)^2 + (y
 hunt :: Player -> Monster -> Monster
 hunt (Player (xpos, ypos) _) (Monster (xmon, ymon) _) = Monster ((xmon + (signum (xpos - xmon))*monsterSpeed), (ymon + (signum (ypos - ymon))*monsterSpeed)) (Hunting $ huntingDirection (signum (xpos - xmon)) (signum (ypos - ymon)))
 
-huntingDirection (-1) (-1) = WalkLeft
-huntingDirection (-1) 1 = WalkLeft
-huntingDirection 1 (-1) = WalkRight
-huntingDirection 1 1 = WalkRight
-huntingDirection (-1) _ = WalkLeft
-huntingDirection _ _ = WalkRight
+huntingDirection :: Float -> Float -> HuntingDirection
+huntingDirection (-1) (-1) = HuntingLeft
+huntingDirection (-1) 1 = HuntingLeft
+huntingDirection 1 (-1) = HuntingRight
+huntingDirection 1 1 = HuntingRight
+huntingDirection (-1) _ = HuntingLeft
+huntingDirection _ _ = HuntingRight
 
 -- turn in random direction
---wander :: Direction -> Monster -> Monster
+wander :: Direction -> Monster -> Monster
 wander r (Monster (xmon, ymon) (Wander _ 0)) = Monster (xmon, ymon) (Wander r wanderDist)
 wander r (Monster (xmon, ymon) (Hunting _)) = Monster (xmon, ymon) (Wander r wanderDist)
 -- go straight
@@ -243,25 +247,26 @@ continueDirection WalkLeft True = WalkRight
 continueDirection WalkRight True = WalkLeft
 continueDirection direction False = direction
 
+stepInCurrentDirection :: Direction -> (Float, Float) -> Float -> (Float, Float)
 stepInCurrentDirection WalkUp (xpos, ypos)    speed = (xpos, ypos + speed)
 stepInCurrentDirection WalkDown (xpos, ypos)  speed = (xpos, ypos - speed)
 stepInCurrentDirection WalkLeft (xpos, ypos)  speed = (xpos - speed, ypos)
 stepInCurrentDirection WalkRight (xpos, ypos) speed = (xpos + speed, ypos)
 
-
-monitorStatusChange (Monster _ (Hunting _)) (Monster _ (Wander _ _)) pace = Just Danger
-monitorStatusChange (Monster _ (Wander _ _)) (Monster _ (Hunting _)) pace = Just Safe
-monitorStatusChange _ _ pace = Nothing
+monitorStatusChange :: Monster -> Monster -> Maybe StatusChange -> Maybe StatusChange
+monitorStatusChange (Monster _ (Hunting _)) (Monster _ (Wander _ _)) _ = Just Danger
+monitorStatusChange (Monster _ (Wander _ _)) (Monster _ (Hunting _)) _ = Just Safe
+monitorStatusChange _ _ _ = Nothing
 
 -- output functions
 outputFunction window glossState textures sounds renderState soundState =  (renderFrame window glossState textures renderState) >> (playSounds sounds soundState)
 
-renderFrame window glossState textures (RenderState (Player (xpos, ypos) playerDir) (Monster (xmon, ymon) status) gameOver viewport) = do
+renderFrame window glossState textures (RenderState (Player _ playerDir) (Monster (xmon, ymon) status) gameOver viewport) = do
    displayPicture (width, height) black glossState (viewPortScale viewport) $ 
      Pictures $ gameOngoing gameOver
-                             [ uncurry translate (viewPortTranslate viewport) $ tiledBackground (background textures) worldWidth worldHeight
-                             , renderPlayer playerDir (player textures)
-                             , uncurry translate (viewPortTranslate viewport) $ renderMonster status xmon ymon (monsterWalking textures) (monsterHunting textures) ]
+                             [ uncurry translate (viewPortTranslate viewport) $ tiledBackground (backgroundTexture textures)
+                             , renderPlayer playerDir (playerTexture textures)
+                             , uncurry translate (viewPortTranslate viewport) $ renderMonster status xmon ymon (monsterWalkingTexture textures) (monsterHuntingTexture textures) ]
    swapBuffers window
 
 -- tiling: pictures translated to the appropriate locations to fill up the given width and heights
@@ -269,7 +274,9 @@ renderFrame window glossState textures (RenderState (Player (xpos, ypos) playerD
 -- which potentially means translating the tiles back a bit not to go over the edge
 tileSize :: Float
 tileSize = 160
-tiledBackground texture width height = Pictures $ map (\a ->  ((uncurry translate) a) texture) $ translateMatrix worldWidth worldHeight
+
+tiledBackground :: Picture -> Picture
+tiledBackground texture = Pictures $ map (\a ->  ((uncurry translate) a) texture) $ translateMatrix worldWidth worldHeight
 
 -- what we want: 640, 480
 -- -320--x--(-160)--x--0--x--160--x--320
@@ -284,30 +291,34 @@ translateMatrix w h = concat $ map (zip xTiles)
                             higherbound size = size/2 - tileSize/2
                             lowerbound size = -(higherbound size)
 
---renderPlayer :: Float -> Float -> Maybe Direction -> TextureSet -> Picture
+renderPlayer :: Maybe PlayerMovement -> TextureSet -> Picture
 renderPlayer (Just (PlayerMovement WalkUp 0)) textureSet = backs textureSet !! 0
 renderPlayer (Just (PlayerMovement WalkUp 1)) textureSet = backs textureSet !! 1
 renderPlayer (Just (PlayerMovement WalkUp 2)) textureSet = backs textureSet !! 0
 renderPlayer (Just (PlayerMovement WalkUp 3)) textureSet = backs textureSet !! 2
+renderPlayer (Just (PlayerMovement WalkUp _)) _ = error "renderPlayer: outside of range"
 renderPlayer (Just (PlayerMovement WalkDown 0)) textureSet = fronts textureSet !! 0
 renderPlayer (Just (PlayerMovement WalkDown 1)) textureSet = fronts textureSet !! 1
 renderPlayer (Just (PlayerMovement WalkDown 2)) textureSet = fronts textureSet !! 0
 renderPlayer (Just (PlayerMovement WalkDown 3)) textureSet = fronts textureSet !! 2
+renderPlayer (Just (PlayerMovement WalkDown _)) _ = error "renderPlayer: outside of range"
 renderPlayer (Just (PlayerMovement WalkRight 0)) textureSet = rights textureSet !! 0
 renderPlayer (Just (PlayerMovement WalkRight 1)) textureSet = rights textureSet !! 1
 renderPlayer (Just (PlayerMovement WalkRight 2)) textureSet = rights textureSet !! 0
 renderPlayer (Just (PlayerMovement WalkRight 3)) textureSet = rights textureSet !! 2
+renderPlayer (Just (PlayerMovement WalkRight _)) _ = error "renderPlayer: outside of range"
 renderPlayer (Just (PlayerMovement WalkLeft 0)) textureSet = lefts textureSet !! 0
 renderPlayer (Just (PlayerMovement WalkLeft 1)) textureSet = lefts textureSet !! 1
 renderPlayer (Just (PlayerMovement WalkLeft 2)) textureSet = lefts textureSet !! 0
 renderPlayer (Just (PlayerMovement WalkLeft 3)) textureSet = lefts textureSet !! 2
+renderPlayer (Just (PlayerMovement WalkLeft _)) _ = error "renderPlayer: outside of range"
 renderPlayer Nothing textureSet = fronts textureSet !! 0
 
 renderMonster :: MonsterStatus -> Float -> Float -> TextureSet -> TextureSet -> Picture
-renderMonster (Hunting WalkLeft) xpos ypos _ textureSet = translate xpos ypos $ left textureSet
-renderMonster (Hunting WalkRight) xpos ypos _ textureSet = translate xpos ypos $ right textureSet
-renderMonster (Wander WalkUp n) xpos ypos textureSet _ = translate xpos ypos $ back textureSet
-renderMonster (Wander WalkDown n) xpos ypos textureSet _ = translate xpos ypos $ front textureSet
+renderMonster (Hunting HuntingLeft) xpos ypos _ textureSet = translate xpos ypos $ left textureSet
+renderMonster (Hunting HuntingRight) xpos ypos _ textureSet = translate xpos ypos $ right textureSet
+renderMonster (Wander WalkUp _) xpos ypos textureSet _ = translate xpos ypos $ back textureSet
+renderMonster (Wander WalkDown _) xpos ypos textureSet _ = translate xpos ypos $ front textureSet
 renderMonster (Wander WalkLeft n) xpos ypos textureSet _ = translate xpos ypos $ rotate (16* fromIntegral n) $ left textureSet
 renderMonster (Wander WalkRight n) xpos ypos textureSet _ = translate xpos ypos $ rotate (16* fromIntegral n) $ right textureSet
 
@@ -317,11 +328,11 @@ gameOngoing gameOver pics = if gameOver then pics ++ [Color black $ translate (-
                                         else pics
 
 withWindow :: Int -> Int -> String -> (GLFW.Window -> IO ()) -> IO ()
-withWindow width height title f = do
+withWindow windowWidth windowHeight title f = do
     GLFW.setErrorCallback $ Just simpleErrorCallback
     r <- GLFW.init
     when r $ do
-        m <- GLFW.createWindow width height title Nothing Nothing
+        m <- GLFW.createWindow windowWidth windowHeight title Nothing Nothing
         case m of
           (Just win) -> do
               GLFW.makeContextCurrent m
@@ -351,23 +362,27 @@ backgroundMusic source = do
         loopingMode source $= Looping
         play [source]
 
+paceToPitch :: StatusChange -> ALfloat
 paceToPitch Safe = 1
 paceToPitch Danger = 2
 
 playSounds :: Sounds -> SoundState -> IO ()
-playSounds (Sounds music shriek bite) (SoundState mbPace endOfGame hunting) = do
-  changeBackgroundMusic music mbPace 
-  when endOfGame $ playSound shriek
-  if hunting then playContinuousSound bite
-             else stop [bite]
+playSounds (Sounds musicSource shriekSource biteSource) (SoundState mbPace endOfGame hunting) = do
+  changeBackgroundMusic musicSource mbPace 
+  when endOfGame $ playSound shriekSource
+  if hunting then playContinuousSound biteSource
+             else stop [biteSource]
 
+changeBackgroundMusic :: Source -> Maybe StatusChange -> IO ()
 changeBackgroundMusic source (Just pace) = pitch source $= (paceToPitch pace)
-changeBackgroundMusic source Nothing     = return ()
+changeBackgroundMusic _      Nothing     = return ()
 
+playContinuousSound :: Source -> IO ()
 playContinuousSound source = do
         state <- get (sourceState source)
         unless (state == Playing) $ play [source]
 
+playSound :: Source -> IO ()
 playSound source = do
     play [source]
     -- Normally nothing should go wrong above, but one never knows...
