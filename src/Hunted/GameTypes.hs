@@ -38,12 +38,14 @@ instance Random Direction where
   random g = randomR (minBound, maxBound) g
 
 data RenderState = RenderState Player Monster (Maybe Ending) ViewPort [Bolt]
+                 | StartRenderState
 data SoundState = SoundState { mood :: (Maybe StatusChange)
                              , playerScreams :: Bool
                              , hunting :: Bool
                              , monsterDies :: Bool
                              , shoot :: Bool
                              , hit :: Bool }
+                | StartSoundState
 
 data StatusChange = Danger | Safe
 
@@ -53,3 +55,5 @@ data Bolt = Bolt Pos Direction Range Bool
 
 data Ending = Win | Lose
               deriving (Show, Eq)
+
+data GameStatus = Start | Level Int | Exit Int

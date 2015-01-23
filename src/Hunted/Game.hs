@@ -9,7 +9,7 @@ import Hunted.Sound
 import Hunted.Graphics
 
 import FRP.Elerea.Simple as Elerea
-import Control.Applicative ((<$>), (<*>), liftA2)
+import Control.Applicative ((<$>), (<*>), liftA2, pure)
 import Graphics.Gloss.Data.ViewPort
 import System.Random (random, RandomGen(..))
 import "GLFW-b" Graphics.UI.GLFW as GLFW (Window)
@@ -53,7 +53,8 @@ boltRange = 20
 boltSpeed :: Float
 boltSpeed = 10
 
-{- GlossState needs to be exported
+{-
+-- GlossState needs to be exported
 --   Graphics.Gloss.Internals.Rendering.State
 --   pull request required
 hunted :: forall t.
@@ -68,7 +69,44 @@ hunted :: forall t.
         -> Sounds
         -> SignalGen (Signal (IO ()))
 -}
-hunted win (width, height) directionKey shootKey randomGenerator textures glossState sounds = mdo
+
+initialStatus :: GameStatus
+initialStatus = Start
+
+hunted win dim directionKey shootKey randomGenerator textures glossState sounds = mdo
+  (renderState, soundState, levelTrigger) <- levelSwitcher $ playLevel win dim directionKey shootKey randomGenerator textures glossState sounds <$> levelCount'
+  levelCount <- transfer initialStatus statusProgression levelTrigger
+  levelCount' <- delay initialStatus levelCount
+  return $ outputFunction win glossState textures dim sounds <$> renderState <*> soundState
+
+statusProgression :: Bool -> GameStatus -> GameStatus
+statusProgression False status = status
+statusProgression True Start = Level 1
+statusProgression True (Level n) = Level (n + 1)
+
+levelSwitcher :: Signal (SignalGen (Signal RenderState, Signal SoundState, Signal Bool)) -> SignalGen (Signal RenderState, Signal SoundState, Signal Bool)
+levelSwitcher levelGen = mdo
+  trigger <- memo (third =<< gameSignal)
+  trigger' <- delay True trigger
+  -- so ss = Signal (Maybe x)
+  maybeSignal <- generator (toMaybe <$> trigger' <*> levelGen) 
+  gameSignal <- transfer undefined store maybeSignal
+  return (first =<< gameSignal, second =<< gameSignal, trigger)
+  where toMaybe bool x = if bool then Just <$> x else pure Nothing
+        store (Just x) _ = x
+        store Nothing x = x
+        first (x, _, _) = x
+        second (_, x, _) = x
+        third (_, _, x) = x
+
+-- start game when pressing s
+-- playLevel :: ... -> SignalGen (Signal RenderState, Signal SoundState, Signal Bool)
+playLevel win (width, height) directionKey shootKey randomGenerator textures glossState sounds Start = mdo
+    let startGame = sIsPressed <$> shootKey
+    return (pure StartRenderState, pure StartSoundState, startGame)
+    where sIsPressed (_,_,_,s) = s
+
+playLevel win (width, height) directionKey shootKey randomGenerator textures glossState sounds (Level n) = mdo
     let worldDimensions = (worldWidth, worldHeight)
     player <- transfer2 initialPlayer (\p dead dK -> movePlayer p dK dead 10 worldDimensions) directionKey gameOver'
     randomNumber <- stateful (undefined, randomGenerator) nextRandom
@@ -101,8 +139,9 @@ hunted win (width, height) directionKey shootKey randomGenerator textures glossS
                                  <*> monsterScreams
                                  <*> (hasAny <$> shoot)
                                  <*> (boltHit <$> monster <*> bolts)
+        nextLevel = isDead <$> monster
 
-    return $ outputFunction win glossState textures (width, height) sounds <$> renderState <*> soundState
+    return (renderState, soundState, nextLevel)
     where playerEaten player monster
               | distance player monster < (playerSize^2  :: Float) = Just Lose
               | otherwise                                          = Nothing
@@ -111,6 +150,7 @@ hunted win (width, height) directionKey shootKey randomGenerator textures glossS
               | otherwise   = Nothing
           gameEnds player monster = maybe (monsterDead monster) Just (playerEaten player monster)
           nextRandom (_, g) = random g
+          isDead (Monster _ _ health) = health == 0
 
 -- FRP
 
@@ -209,7 +249,7 @@ hitOrMiss :: [Bolt] -> Monster -> Monster
 hitOrMiss bolts monster@(Monster (xmon, ymon) status health) =
     Monster (xmon, ymon) status (health - (hits monster bolts))
     where hits monster bolts = fromIntegral $ length
-                                            $ filter (< (monsterSize/2)^2) (boltDistances monster bolts)
+                                            $ filter (<= (monsterSize/2)^2) (boltDistances monster bolts)
 boltDistances :: Monster -> [Bolt] -> [Float]
 boltDistances (Monster (xmon, ymon) _ _) bolts =
     map (\(Bolt (xbolt, ybolt) _ _ _) -> dist (xmon, ymon) (xbolt, ybolt)) bolts

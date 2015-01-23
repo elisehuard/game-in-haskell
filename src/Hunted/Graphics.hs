@@ -56,7 +56,7 @@ renderFrame :: Window
                -> IO ()
 -}
 renderFrame window glossState textures dimensions (worldWidth, worldHeight) (RenderState (Player _ playerDir) monster gameOver viewport bolts) = do
-   displayPicture dimensions black glossState (viewPortScale viewport) $ 
+   displayPicture dimensions black glossState (viewPortScale viewport) $
      Pictures $ gameOngoing gameOver $
                              [ uncurry translate (viewPortTranslate viewport) $ tiledBackground (background textures) worldWidth worldHeight
                              , renderPlayer playerDir (player textures)
@@ -64,6 +64,12 @@ renderFrame window glossState textures dimensions (worldWidth, worldHeight) (Ren
                              , uncurry translate (viewPortTranslate viewport) $ renderHealthBar monster ]
                               ++ (map (uncurry translate (viewPortTranslate viewport) . renderBolt) bolts)
    swapBuffers window
+
+renderFrame window glossState textures dimensions (worldWidth, worldHeight) StartRenderState = do
+  displayPicture dimensions black glossState 1 $
+    Pictures [ Color green $ translate (-140) 0 $ scale 0.4 0.4 $ Text "Hunting season"
+             , Color green $ translate (-140) (-50) $ scale 0.1 0.1 $ Text "Press s to get started" ]
+  swapBuffers window
 
 -- tiling: pictures translated to the appropriate locations to fill up the given width and heights
 -- I scaled the tile to the greatest common factor of the width and height, but it should work to fit the actual width and height
@@ -121,7 +127,7 @@ renderBolt (Bolt (xpos, ypos) _ _ _) = translate xpos ypos $ Color (greyN 0.7) $
 
 -- [x x x x x]
 -- [0 0]
--- 1 centered around xmon, size bar 
+-- 1 centered around xmon, size bar
 -- 2 centered around xmon - bar/2 + health/2
 numberOfLives :: Float
 numberOfLives = 4

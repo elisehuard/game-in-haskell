@@ -63,6 +63,7 @@ paceToPitch Safe = 1
 paceToPitch Danger = 2
 
 playSounds :: Sounds -> SoundState -> IO ()
+playSounds sounds StartSoundState = return ()
 playSounds sounds soundState = do
   changeBackgroundMusic (backgroundTune sounds) (mood soundState)
   when (playerScreams soundState) $ playSound (shriek sounds)
