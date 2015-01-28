@@ -1,5 +1,6 @@
 {-# LANGUAGE RecursiveDo #-}
 {-# LANGUAGE PackageImports #-}
+{-# OPTIONS_GHC -fno-warn-type-defaults #-}
 module Hunted.Game (
   hunted
 ) where
@@ -10,6 +11,7 @@ import Hunted.Graphics
 
 import FRP.Elerea.Simple as Elerea
 import Control.Applicative ((<$>), (<*>), liftA2, pure)
+import Data.Maybe (isJust)
 import Graphics.Gloss.Data.ViewPort
 import System.Random (random, RandomGen(..))
 import "GLFW-b" Graphics.UI.GLFW as GLFW (Window)
@@ -53,104 +55,141 @@ boltRange = 20
 boltSpeed :: Float
 boltSpeed = 10
 
+
+initialLevel :: LevelStatus
+initialLevel = Level 1
+
+initialLives :: Int
+initialLives = 3
+
 {-
 -- GlossState needs to be exported
 --   Graphics.Gloss.Internals.Rendering.State
 --   pull request required
-hunted :: forall t.
-        System.Random.RandomGen t =>
-        Window
-        -> (Int, Int)
-        -> Signal (Bool, Bool, Bool, Bool)
-        -> Signal (Bool, Bool, Bool, Bool)
-        -> t
-        -> Hunted.Graphics.Textures
-        -> GlossState.State
-        -> Sounds
-        -> SignalGen (Signal (IO ()))
 -}
-
-initialStatus :: GameStatus
-initialStatus = Start
-
+-- expected:
 hunted win dim directionKey shootKey randomGenerator textures glossState sounds = mdo
-  (renderState, soundState, levelTrigger) <- levelSwitcher $ playLevel win dim directionKey shootKey randomGenerator textures glossState sounds <$> levelCount'
-  levelCount <- transfer initialStatus statusProgression levelTrigger
-  levelCount' <- delay initialStatus levelCount
-  return $ outputFunction win glossState textures dim sounds <$> renderState <*> soundState
+  let mkGame = playGame directionKey shootKey randomGenerator
+  (gameState, gameTrigger) <- switcher $ mkGame <$> gameStatus'
+  gameStatus <- transfer Start gameProgress gameTrigger
+  gameStatus' <- delay Start gameStatus
+  return $ outputFunction win glossState textures dim sounds <$> gameState
+  where gameProgress False s      = s
+        gameProgress True  Start  = InGame
+        gameProgress True  InGame = Start
 
-statusProgression :: Bool -> GameStatus -> GameStatus
-statusProgression False status = status
-statusProgression True Start = Level 1
-statusProgression True (Level n) = Level (n + 1)
 
-levelSwitcher :: Signal (SignalGen (Signal RenderState, Signal SoundState, Signal Bool)) -> SignalGen (Signal RenderState, Signal SoundState, Signal Bool)
-levelSwitcher levelGen = mdo
-  trigger <- memo (third =<< gameSignal)
-  trigger' <- delay True trigger
-  -- so ss = Signal (Maybe x)
-  maybeSignal <- generator (toMaybe <$> trigger' <*> levelGen) 
-  gameSignal <- transfer undefined store maybeSignal
-  return (first =<< gameSignal, second =<< gameSignal, trigger)
-  where toMaybe bool x = if bool then Just <$> x else pure Nothing
-        store (Just x) _ = x
-        store Nothing x = x
-        first (x, _, _) = x
-        second (_, x, _) = x
-        third (_, _, x) = x
-
+playGame :: RandomGen t =>
+            Signal (Bool, Bool, Bool, Bool)
+         -> Signal (Bool, Bool, Bool, Bool)
+         -> t
+         -> GameStatus
+         -> SignalGen (Signal GameState, Signal Bool)
 -- start game when pressing s
--- playLevel :: ... -> SignalGen (Signal RenderState, Signal SoundState, Signal Bool)
-playLevel win (width, height) directionKey shootKey randomGenerator textures glossState sounds Start = mdo
+playGame _ shootKey _ Start = mdo
     let startGame = sIsPressed <$> shootKey
-    return (pure StartRenderState, pure StartSoundState, startGame)
+    return (pure (GameState StartRenderState StartSoundState), startGame)
     where sIsPressed (_,_,_,s) = s
 
-playLevel win (width, height) directionKey shootKey randomGenerator textures glossState sounds (Level n) = mdo
+-- bool should be gameOver
+playGame directionKey shootKey randomGenerator InGame = mdo
+  (gameState, levelTrigger) <- switcher $ playLevel directionKey shootKey randomGenerator <$> levelCount' <*> score' <*> lives'
+  levelCount <- transfer2 initialLevel statusProgression gameState levelTrigger
+  levelCount' <- delay initialLevel levelCount
+  lives <- transfer initialLives decrementLives gameState
+  lives' <- delay initialLives lives
+  score <- memo (stateScore <$> gameState)
+  score' <- delay 0 score
+  let gameOver = isGameOver <$> gameState
+  return (gameState, gameOver)
+  where isGameOver (GameState (RenderState {renderState_lives = l}) _) = l == 0
+        isGameOver (GameState StartRenderState _) = False
+        stateScore (GameState (RenderState {renderState_score = s}) _) = s
+        stateScore (GameState StartRenderState _) = 0
+        decrementLives (GameState (RenderState {renderState_ending = Just Lose}) _) l = l - 1
+        decrementLives (GameState _ _) l = l
+
+-- level progression if triggered AND the player won
+statusProgression :: GameState -> Bool -> LevelStatus -> LevelStatus
+statusProgression _                                                            False level     = level
+statusProgression (GameState (RenderState {renderState_ending = Just Win}) _)  True  (Level n) = Level (n + 1)
+statusProgression (GameState (RenderState {renderState_ending = Just Lose}) _) True  level     = level
+statusProgression (GameState StartRenderState _)                               _     level     = level
+
+switcher :: Signal (SignalGen (Signal GameState, Signal Bool)) -> SignalGen (Signal GameState, Signal Bool)
+switcher levelGen = mdo
+  trigger <- memo (snd =<< gameSignal)
+  trigger' <- delay True trigger
+  maybeSignal <- generator (toMaybe <$> trigger' <*> levelGen)
+  gameSignal <- transfer undefined store maybeSignal
+  return (fst =<< gameSignal, trigger)
+
+store (Just x) _ = x
+store Nothing x = x
+
+toMaybe bool x = if bool then Just <$> x else pure Nothing
+
+playLevel :: RandomGen t =>
+             Signal (Bool, Bool, Bool, Bool)
+          -> Signal (Bool, Bool, Bool, Bool)
+          -> t
+          -> LevelStatus
+          -> Float
+          -> Int
+          -> SignalGen (Signal GameState, Signal Bool)
+playLevel directionKey shootKey randomGenerator (Level _) currentScore lives = mdo
+
+    -- render signals
     let worldDimensions = (worldWidth, worldHeight)
-    player <- transfer2 initialPlayer (\p dead dK -> movePlayer p dK dead 10 worldDimensions) directionKey gameOver'
+    player <- transfer2 initialPlayer (\p dead dK -> movePlayer p dK dead 10 worldDimensions) directionKey levelOver'
     randomNumber <- stateful (undefined, randomGenerator) nextRandom
-    monster <- transfer4 initialMonster (wanderOrHunt worldDimensions) player randomNumber gameOver' bolts'
+    hits <- memo (monsterHits <$> monster' <*> bolts')
+    monster <- transfer4 initialMonster (wanderOrHunt worldDimensions) player randomNumber levelOver' hits
     monster' <- delay initialMonster monster
-    gameOver <- memo (gameEnds <$> player <*> monster)
-    gameOver' <- delay Nothing gameOver
+    score <- transfer currentScore accumulateScore hits
+    levelOver <- memo (levelEnds <$> player <*> monster)
+    levelOver' <- delay Nothing levelOver
     viewport <- transfer initialViewport viewPortMove player
-    statusChange <- transfer2 Nothing monitorStatusChange monster monster'
-    playerScreams <- Elerea.until ((== (Just Lose)) <$> gameOver)
-    monsterScreams <- Elerea.until ((== (Just Win)) <$> gameOver)
+
     shoot <- edgify shootKey
-    -- takes (bool, bool, bool, bool) and player, output SignalGen [Signal Bolt]
     let bolt direction range position = stateful (Bolt position direction range False) moveBolt
         mkShot shot player = if hasAny shot
                               then (:[]) <$> bolt (dirFrom shot) boltRange (position player)
                               else return []
-    -- mkShot applied to Signal, so Signal (SignalGen [Signal Bolt])
-    -- generator -> SignalGen (Signal [Signal Bolt])
-    -- newBolts Signal [Signal Bolt]
     newBolts <- generator (mkShot <$> shoot <*> player)
     bolts <- collection newBolts (boltIsAlive worldDimensions <$> monster)
     bolts' <- delay [] bolts
 
-    let hunting = stillHunting <$> monster <*> gameOver
-        renderState = RenderState <$> player <*> monster <*> gameOver <*> viewport <*> bolts
+    -- sound signals
+    statusChange <- transfer2 Nothing monitorStatusChange monster monster'
+    playerScreams <- Elerea.until ((== (Just Lose)) <$> levelOver)
+    monsterScreams <- Elerea.until ((== (Just Win)) <$> levelOver)
+
+
+    let hunting = stillHunting <$> monster <*> levelOver
+        renderState = RenderState <$> player
+                                  <*> monster
+                                  <*> levelOver
+                                  <*> viewport
+                                  <*> bolts
+                                  <*> pure lives
+                                  <*> score
         soundState  = SoundState <$> statusChange
                                  <*> playerScreams
                                  <*> hunting
                                  <*> monsterScreams
                                  <*> (hasAny <$> shoot)
                                  <*> (boltHit <$> monster <*> bolts)
-        nextLevel = isDead <$> monster
 
-    return (renderState, soundState, nextLevel)
+    return (GameState <$> renderState <*> soundState, isJust <$> levelOver)
     where playerEaten player monster
               | distance player monster < (playerSize^2  :: Float) = Just Lose
               | otherwise                                          = Nothing
-          monsterDead (Monster _ _ health) 
+          monsterDead (Monster _ _ health)
               | health == 0 = Just Win
               | otherwise   = Nothing
-          gameEnds player monster = maybe (monsterDead monster) Just (playerEaten player monster)
+          levelEnds player monster = maybe (monsterDead monster) Just (playerEaten player monster)
           nextRandom (_, g) = random g
-          isDead (Monster _ _ health) = health == 0
 
 -- FRP
 
@@ -226,7 +265,7 @@ outsideOfLimits (width, height) (xmon, ymon) size = xmon > width/2 - size/2 ||
 
 move :: (Bool, Bool, Bool, Bool) -> Player -> Float -> Player
 move (False, False, False, False) (Player (xpos, ypos) _) _ = Player (xpos, ypos) Nothing
-move keys (Player (xpos, ypos) (Just (PlayerMovement direction n))) increment 
+move keys (Player (xpos, ypos) (Just (PlayerMovement direction n))) increment
         | dirFrom keys == direction = Player ((xpos, ypos) `plus` increment `times` stepInDirection direction) (Just $ PlayerMovement direction ((n+1) `mod` 4))
         | otherwise                 = Player ((xpos, ypos) `plus` increment `times` stepInDirection (dirFrom keys)) (Just $ PlayerMovement (dirFrom keys) 0)
 move keys (Player (xpos, ypos) Nothing) increment = Player ((xpos, ypos) `plus` increment `times` stepInDirection (dirFrom keys)) (Just $ PlayerMovement (dirFrom keys) 0)
@@ -245,11 +284,18 @@ stepInDirection WalkRight = (1, 0)
 stepInDirection WalkUp    = (0, 1)
 stepInDirection WalkDown  = (0, -1)
 
-hitOrMiss :: [Bolt] -> Monster -> Monster
-hitOrMiss bolts monster@(Monster (xmon, ymon) status health) =
-    Monster (xmon, ymon) status (health - (hits monster bolts))
-    where hits monster bolts = fromIntegral $ length
-                                            $ filter (<= (monsterSize/2)^2) (boltDistances monster bolts)
+hitOrMiss :: Float -> Monster -> Monster
+hitOrMiss hits monster@(Monster (xmon, ymon) status health) =
+    Monster (xmon, ymon) status (health - hits)
+
+
+monsterHits :: Monster -> [Bolt] -> Float
+monsterHits monster bolts = fromIntegral $ length
+                                         $ filter (<= (monsterSize/2)^2) (boltDistances monster bolts)
+
+accumulateScore :: Float -> Float -> Float
+accumulateScore hits score = score + hits
+
 boltDistances :: Monster -> [Bolt] -> [Float]
 boltDistances (Monster (xmon, ymon) _ _) bolts =
     map (\(Bolt (xbolt, ybolt) _ _ _) -> dist (xmon, ymon) (xbolt, ybolt)) bolts
@@ -262,9 +308,9 @@ wanderOrHunt :: System.Random.RandomGen t =>
                 -> Player
                 -> (Direction, t)
                 -> Maybe Ending
-                -> [Bolt]
+                -> Float
                 -> Monster
-                -> Monster 
+                -> Monster
 -- game ended
 wanderOrHunt _ _ _ (Just _) _ monster = monster
 
@@ -272,8 +318,8 @@ wanderOrHunt _ _ _ (Just _) _ monster = monster
 wanderOrHunt _ _ _ _    _ monster@(Monster _ _ 0) = monster
 
 -- normal game
-wanderOrHunt dimensions player (r, _) Nothing bolts monster = do
-    let monsterHit = hitOrMiss bolts monster
+wanderOrHunt dimensions player (r, _) Nothing hits monster = do
+    let monsterHit = hitOrMiss hits monster
     if close player monsterHit
      then hunt player monsterHit
      else wander r monsterHit dimensions
@@ -326,5 +372,5 @@ monitorStatusChange (Monster _ (Wander _ _) _) (Monster _ (Hunting _) _) _ = Jus
 monitorStatusChange _ _ _ = Nothing
 
 -- output functions
-outputFunction window glossState textures dimensions sounds renderState soundState =
+outputFunction window glossState textures dimensions sounds (GameState renderState soundState) =
   (renderFrame window glossState textures dimensions (worldWidth, worldHeight) renderState) >> (playSounds sounds soundState)

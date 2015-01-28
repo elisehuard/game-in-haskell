@@ -1,3 +1,4 @@
+{-# OPTIONS_GHC -fno-warn-type-defaults #-}
 module Hunted.GameTypes where
 
 import System.Random
@@ -37,7 +38,13 @@ instance Random Direction where
                        (x, g') -> (toEnum x, g')
   random g = randomR (minBound, maxBound) g
 
-data RenderState = RenderState Player Monster (Maybe Ending) ViewPort [Bolt]
+data RenderState = RenderState { renderState_player :: Player
+                               , renderState_monster :: Monster
+                               , renderState_ending :: Maybe Ending
+                               , renderState_viewport :: ViewPort
+                               , renderState_bolts :: [Bolt]
+                               , renderState_lives :: Int
+                               , renderState_score :: Float }
                  | StartRenderState
 data SoundState = SoundState { mood :: (Maybe StatusChange)
                              , playerScreams :: Bool
@@ -46,6 +53,8 @@ data SoundState = SoundState { mood :: (Maybe StatusChange)
                              , shoot :: Bool
                              , hit :: Bool }
                 | StartSoundState
+
+data GameState = GameState RenderState SoundState
 
 data StatusChange = Danger | Safe
 
@@ -56,4 +65,7 @@ data Bolt = Bolt Pos Direction Range Bool
 data Ending = Win | Lose
               deriving (Show, Eq)
 
-data GameStatus = Start | Level Int | Exit Int
+data LevelStatus = Level Int
+                   deriving Show
+data GameStatus = Start | InGame
+                  deriving Show

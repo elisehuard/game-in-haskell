@@ -55,9 +55,9 @@ renderFrame :: Window
                -> RenderState
                -> IO ()
 -}
-renderFrame window glossState textures dimensions (worldWidth, worldHeight) (RenderState (Player _ playerDir) monster gameOver viewport bolts) = do
+renderFrame window glossState textures dimensions (worldWidth, worldHeight) (RenderState (Player _ playerDir) monster gameOver viewport bolts lives score) = do
    displayPicture dimensions black glossState (viewPortScale viewport) $
-     Pictures $ gameOngoing gameOver $
+     Pictures $ gameOngoing gameOver $ gameStats lives score $
                              [ uncurry translate (viewPortTranslate viewport) $ tiledBackground (background textures) worldWidth worldHeight
                              , renderPlayer playerDir (player textures)
                              , uncurry translate (viewPortTranslate viewport) $ renderMonster monster (monsterWalking textures) (monsterHunting textures)
@@ -65,9 +65,9 @@ renderFrame window glossState textures dimensions (worldWidth, worldHeight) (Ren
                               ++ (map (uncurry translate (viewPortTranslate viewport) . renderBolt) bolts)
    swapBuffers window
 
-renderFrame window glossState textures dimensions (worldWidth, worldHeight) StartRenderState = do
+renderFrame window glossState _ dimensions _ StartRenderState = do
   displayPicture dimensions black glossState 1 $
-    Pictures [ Color green $ translate (-140) 0 $ scale 0.4 0.4 $ Text "Hunting season"
+    Pictures [ Color green $ translate (-140) 0 $ scale 0.4 0.4 $ Text "Hunting Season"
              , Color green $ translate (-140) (-50) $ scale 0.1 0.1 $ Text "Press s to get started" ]
   swapBuffers window
 
@@ -147,3 +147,10 @@ gameOngoing :: Maybe Ending -> [Picture] -> [Picture]
 gameOngoing (Just Lose) pics =  pics ++ [Color black $ translate (-100) 0 $ Scale 0.3 0.3 $ Text "Game Over"]
 gameOngoing (Just Win) pics =  pics ++ [Color black $ translate (-100) 0 $ Scale 0.3 0.3 $ Text "You win!"]
 gameOngoing Nothing pics =  pics
+
+-- add score and lives
+-- lives are reprented by circles
+gameStats :: Int -> Float -> [Picture] -> [Picture]
+gameStats lives score pics = pics ++ [ Color black $ translate 280 200 $ Scale 0.2 0.2 $ Text $ show score
+                                     , Color black $ translate (-300) 200 $ Scale 0.2 0.2 $ Text "lives: "]
+                                  ++ map (\i -> Color red $ translate ((-230) + 40*i) 210 $ circleSolid 10) [0..(fromIntegral (lives - 1))]
