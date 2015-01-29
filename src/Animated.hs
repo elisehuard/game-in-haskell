@@ -172,7 +172,7 @@ wanderDist :: Int
 wanderDist = 45
 
 huntingDist :: Float
-huntingDist = 100
+huntingDist = 200
 
 wanderOrHunt :: RandomGen t => Player -> (Direction, t) -> Bool -> Monster -> Monster
 wanderOrHunt _ _ True monster = monster
