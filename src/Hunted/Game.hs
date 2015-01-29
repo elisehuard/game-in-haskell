@@ -14,7 +14,6 @@ import Control.Applicative ((<$>), (<*>), liftA2, pure)
 import Data.Maybe (isJust)
 import Graphics.Gloss.Data.ViewPort
 import System.Random (random, RandomGen(..))
-import "GLFW-b" Graphics.UI.GLFW as GLFW (Window)
 
 initialPlayer :: Player
 initialPlayer = Player (0, 0) Nothing
@@ -114,6 +113,7 @@ statusProgression :: GameState -> Bool -> LevelStatus -> LevelStatus
 statusProgression _                                                            False level     = level
 statusProgression (GameState (RenderState {renderState_ending = Just Win}) _)  True  (Level n) = Level (n + 1)
 statusProgression (GameState (RenderState {renderState_ending = Just Lose}) _) True  level     = level
+statusProgression (GameState (RenderState {renderState_ending = Nothing}) _)   True  level     = level
 statusProgression (GameState StartRenderState _)                               _     level     = level
 
 switcher :: Signal (SignalGen (Signal GameState, Signal Bool)) -> SignalGen (Signal GameState, Signal Bool)
@@ -123,11 +123,9 @@ switcher levelGen = mdo
   maybeSignal <- generator (toMaybe <$> trigger' <*> levelGen)
   gameSignal <- transfer undefined store maybeSignal
   return (fst =<< gameSignal, trigger)
-
-store (Just x) _ = x
-store Nothing x = x
-
-toMaybe bool x = if bool then Just <$> x else pure Nothing
+  where store (Just x) _ = x
+        store Nothing x = x
+        toMaybe bool x = if bool then Just <$> x else pure Nothing
 
 playLevel :: RandomGen t =>
              Signal (Bool, Bool, Bool, Bool)
@@ -285,7 +283,7 @@ stepInDirection WalkUp    = (0, 1)
 stepInDirection WalkDown  = (0, -1)
 
 hitOrMiss :: Float -> Monster -> Monster
-hitOrMiss hits monster@(Monster (xmon, ymon) status health) =
+hitOrMiss hits (Monster (xmon, ymon) status health) =
     Monster (xmon, ymon) status (health - hits)
 
 
