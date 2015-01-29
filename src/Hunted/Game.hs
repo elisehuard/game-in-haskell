@@ -266,9 +266,9 @@ outsideOfLimits (width, height) (xmon, ymon) size = xmon > width/2 - size/2 ||
 move :: (Bool, Bool, Bool, Bool) -> Player -> Float -> Player
 move (False, False, False, False) (Player (xpos, ypos) _) _ = Player (xpos, ypos) Nothing
 move keys (Player (xpos, ypos) (Just (PlayerMovement direction n))) increment
-        | dirFrom keys == direction = Player ((xpos, ypos) `plus` increment `times` stepInDirection direction) (Just $ PlayerMovement direction ((n+1) `mod` 4))
-        | otherwise                 = Player ((xpos, ypos) `plus` increment `times` stepInDirection (dirFrom keys)) (Just $ PlayerMovement (dirFrom keys) 0)
-move keys (Player (xpos, ypos) Nothing) increment = Player ((xpos, ypos) `plus` increment `times` stepInDirection (dirFrom keys)) (Just $ PlayerMovement (dirFrom keys) 0)
+        | dirFrom keys == direction = Player ((xpos, ypos) `plus` increment `times` stepInDirection direction) (Just $ PlayerMovement direction (circular n))
+        | otherwise                 = Player ((xpos, ypos) `plus` increment `times` stepInDirection (dirFrom keys)) (Just $ PlayerMovement (dirFrom keys) One)
+move keys (Player (xpos, ypos) Nothing) increment = Player ((xpos, ypos) `plus` increment `times` stepInDirection (dirFrom keys)) (Just $ PlayerMovement (dirFrom keys) One)
 
 dirFrom :: (Bool, Bool, Bool, Bool) -> Direction
 dirFrom (l, r, u, d)

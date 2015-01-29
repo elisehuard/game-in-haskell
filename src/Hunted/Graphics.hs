@@ -13,7 +13,10 @@ import Graphics.Gloss.Data.ViewPort
 import Control.Applicative ((<*>), (<$>))
 
 data TextureSet = TextureSet { front :: Picture, back :: Picture, left :: Picture, right :: Picture }
-                | PlayerTextureSet { fronts :: [Picture], backs :: [Picture], lefts :: [Picture], rights :: [Picture] }
+                | PlayerTextureSet { fronts :: WalkingTexture, backs :: WalkingTexture, lefts :: WalkingTexture, rights :: WalkingTexture }
+
+data WalkingTexture = WalkingTexture { neutral :: Picture, walkLeft :: Picture, walkRight :: Picture }
+
 data Textures = Textures { background :: Picture
                          , player :: TextureSet
                          , monsterWalking :: TextureSet
@@ -40,11 +43,8 @@ loadTextures = do
                     , monsterWalking = monsterWalkingSet
                     , monsterHunting = monsterHuntingSet }
 
-loadAnims :: String -> String -> String -> IO [Picture]
-loadAnims path1 path2 path3 = fun <$> loadBMP path1 <*> loadBMP path2 <*> loadBMP path3
-                              where fun a b c = [a,b,c]
-
-
+loadAnims :: String -> String -> String -> IO WalkingTexture
+loadAnims path1 path2 path3 = WalkingTexture <$> loadBMP path1 <*> loadBMP path2 <*> loadBMP path3
 
 {- again, need to export gloss internal state for this signature, pull request required
 renderFrame :: Window
@@ -94,23 +94,23 @@ translateMatrix w h = concat $ map (zip xTiles)
                             lowerbound size = -(higherbound size)
 
 renderPlayer :: Maybe PlayerMovement -> TextureSet -> Picture
-renderPlayer (Just (PlayerMovement WalkUp 0)) textureSet = backs textureSet !! 0
-renderPlayer (Just (PlayerMovement WalkUp 1)) textureSet = backs textureSet !! 1
-renderPlayer (Just (PlayerMovement WalkUp 2)) textureSet = backs textureSet !! 0
-renderPlayer (Just (PlayerMovement WalkUp 3)) textureSet = backs textureSet !! 2
-renderPlayer (Just (PlayerMovement WalkDown 0)) textureSet = fronts textureSet !! 0
-renderPlayer (Just (PlayerMovement WalkDown 1)) textureSet = fronts textureSet !! 1
-renderPlayer (Just (PlayerMovement WalkDown 2)) textureSet = fronts textureSet !! 0
-renderPlayer (Just (PlayerMovement WalkDown 3)) textureSet = fronts textureSet !! 2
-renderPlayer (Just (PlayerMovement WalkRight 0)) textureSet = rights textureSet !! 0
-renderPlayer (Just (PlayerMovement WalkRight 1)) textureSet = rights textureSet !! 1
-renderPlayer (Just (PlayerMovement WalkRight 2)) textureSet = rights textureSet !! 0
-renderPlayer (Just (PlayerMovement WalkRight 3)) textureSet = rights textureSet !! 2
-renderPlayer (Just (PlayerMovement WalkLeft 0)) textureSet = lefts textureSet !! 0
-renderPlayer (Just (PlayerMovement WalkLeft 1)) textureSet = lefts textureSet !! 1
-renderPlayer (Just (PlayerMovement WalkLeft 2)) textureSet = lefts textureSet !! 0
-renderPlayer (Just (PlayerMovement WalkLeft 3)) textureSet = lefts textureSet !! 2
-renderPlayer Nothing textureSet = fronts textureSet !! 0
+renderPlayer (Just (PlayerMovement WalkUp One)) textureSet = neutral $ backs textureSet
+renderPlayer (Just (PlayerMovement WalkUp Two)) textureSet = walkLeft $ backs textureSet
+renderPlayer (Just (PlayerMovement WalkUp Three)) textureSet = neutral $ backs textureSet
+renderPlayer (Just (PlayerMovement WalkUp Four)) textureSet = walkRight $ backs textureSet
+renderPlayer (Just (PlayerMovement WalkDown One)) textureSet = neutral $ fronts textureSet
+renderPlayer (Just (PlayerMovement WalkDown Two)) textureSet = walkLeft $ fronts textureSet
+renderPlayer (Just (PlayerMovement WalkDown Three)) textureSet = neutral $ fronts textureSet
+renderPlayer (Just (PlayerMovement WalkDown Four)) textureSet = walkRight $ fronts textureSet
+renderPlayer (Just (PlayerMovement WalkRight One)) textureSet = neutral $ rights textureSet
+renderPlayer (Just (PlayerMovement WalkRight Two)) textureSet = walkLeft $ rights textureSet
+renderPlayer (Just (PlayerMovement WalkRight Three)) textureSet = neutral $ rights textureSet
+renderPlayer (Just (PlayerMovement WalkRight Four)) textureSet = walkRight $ rights textureSet
+renderPlayer (Just (PlayerMovement WalkLeft One)) textureSet = neutral $ lefts textureSet
+renderPlayer (Just (PlayerMovement WalkLeft Two)) textureSet = walkLeft $ lefts textureSet
+renderPlayer (Just (PlayerMovement WalkLeft Three)) textureSet = neutral $ lefts textureSet
+renderPlayer (Just (PlayerMovement WalkLeft Four)) textureSet = walkRight $ lefts textureSet
+renderPlayer Nothing textureSet = neutral $ fronts textureSet
 
 renderMonster :: Monster -> TextureSet -> TextureSet -> Picture
 renderMonster (Monster (xpos, ypos) (Hunting WalkLeft) _) _ textureSet = translate xpos ypos $ left textureSet

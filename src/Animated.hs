@@ -159,9 +159,9 @@ move (True, _, _, _) (Player (xpos, ypos) _) increment = Player (xpos - incremen
 move (_, True, _, _) (Player (xpos, ypos) (Just (PlayerMovement WalkRight n))) increment = Player (xpos + increment, ypos) (Just $ PlayerMovement WalkRight (circular n))
 move (_, True, _, _) (Player (xpos, ypos) _) increment = Player (xpos + increment, ypos) $ Just $ PlayerMovement WalkRight One
 move (_, _, True, _) (Player (xpos, ypos) (Just (PlayerMovement WalkUp n))) increment = Player (xpos, (ypos + increment)) (Just $ PlayerMovement WalkUp (circular n))
-move (_, _, True, _) (Player (xpos, ypos) _) increment = Player (xpos, (ypos + increment)) $ Just $ PlayerMovement WalkUp One 
+move (_, _, True, _) (Player (xpos, ypos) _) increment = Player (xpos, (ypos + increment)) $ Just $ PlayerMovement WalkUp One
 move (_, _, _, True) (Player (xpos, ypos) (Just (PlayerMovement WalkDown n))) increment = Player (xpos, (ypos - increment)) (Just $ PlayerMovement WalkDown (circular n))
-move (_, _, _, True) (Player (xpos, ypos) _) increment = Player (xpos, (ypos - increment)) $ Just $ PlayerMovement WalkDown One 
+move (_, _, _, True) (Player (xpos, ypos) _) increment = Player (xpos, (ypos - increment)) $ Just $ PlayerMovement WalkDown One
 
 move (False, False, False, False) (Player (xpos, ypos) _) _ = Player (xpos, ypos) Nothing
 
@@ -253,7 +253,6 @@ translateMatrix w h = concat $ map (zip xTiles)
                             higherbound size = size/2 - tileSize/2
                             lowerbound size = -(higherbound size)
 
---renderPlayer :: Float -> Float -> Maybe Direction -> TextureSet -> Picture
 renderPlayer :: Maybe PlayerMovement -> TextureSet -> Picture
 renderPlayer (Just (PlayerMovement WalkUp One)) textureSet = neutral $ backs textureSet
 renderPlayer (Just (PlayerMovement WalkUp Two)) textureSet = walkLeft $ backs textureSet

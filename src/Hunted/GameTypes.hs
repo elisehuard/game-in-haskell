@@ -22,8 +22,14 @@ type Health = Float
 
 data Player = Player { position :: Pos, movement :: Maybe PlayerMovement }
                deriving Show
-data PlayerMovement = PlayerMovement { dir :: Direction, step :: Int }
+data PlayerMovement = PlayerMovement { dir :: Direction, step :: WalkStage }
                deriving Show
+data WalkStage = One | Two | Three | Four
+                 deriving (Show, Eq, Enum, Bounded)
+
+circular :: (Eq x, Enum x, Bounded x) => x -> x
+circular x = if x == maxBound then minBound else succ x
+
 data Monster = Monster Pos MonsterStatus Health
                deriving Show
 
