@@ -35,7 +35,9 @@ instance Random Direction where
   random g = randomR (minBound, maxBound) g
 
 data TextureSet = TextureSet { front :: Picture, back :: Picture, left :: Picture, right :: Picture }
-                | PlayerTextureSet { fronts :: [Picture], backs :: [Picture], lefts :: [Picture], rights :: [Picture] }
+                | PlayerTextureSet { fronts :: WalkingTexture, backs :: WalkingTexture, lefts :: WalkingTexture, rights :: WalkingTexture }
+
+data WalkingTexture = WalkingTexture { neutral :: Picture, walkLeft :: Picture, walkRight :: Picture }
 
 data Textures = Textures { texturesBackground :: Picture
                          , texturesPlayer :: TextureSet
@@ -108,9 +110,8 @@ loadTextures = do
                     , texturesMonsterWalking = monsterWalkingSet
                     , texturesMonsterHunting = monsterHuntingSet }
 
-loadAnims :: String -> String -> String -> IO [Picture]
-loadAnims path1 path2 path3 = fun <$> loadBMP path1 <*> loadBMP path2 <*> loadBMP path3
-                              where fun a b c = [a,b,c]
+loadAnims :: String -> String -> String -> IO WalkingTexture
+loadAnims path1 path2 path3 = WalkingTexture <$> loadBMP path1 <*> loadBMP path2 <*> loadBMP path3
 
 
 hunted win directionKey randomGenerator textures glossState = mdo
@@ -248,27 +249,27 @@ translateMatrix w h = concat $ map (zip xTiles)
 
 --renderPlayer :: Float -> Float -> Maybe Direction -> TextureSet -> Picture
 renderPlayer :: Maybe PlayerMovement -> TextureSet -> Picture
-renderPlayer (Just (PlayerMovement WalkUp 0)) textureSet = backs textureSet !! 0
-renderPlayer (Just (PlayerMovement WalkUp 1)) textureSet = backs textureSet !! 1
-renderPlayer (Just (PlayerMovement WalkUp 2)) textureSet = backs textureSet !! 0
-renderPlayer (Just (PlayerMovement WalkUp 3)) textureSet = backs textureSet !! 2
+renderPlayer (Just (PlayerMovement WalkUp 0)) textureSet = neutral $ backs textureSet
+renderPlayer (Just (PlayerMovement WalkUp 1)) textureSet = walkLeft $ backs textureSet
+renderPlayer (Just (PlayerMovement WalkUp 2)) textureSet = neutral $ backs textureSet
+renderPlayer (Just (PlayerMovement WalkUp 3)) textureSet = walkRight $ backs textureSet
 renderPlayer (Just (PlayerMovement WalkUp _)) _ = error "renderPlayer: outside of range"
-renderPlayer (Just (PlayerMovement WalkDown 0)) textureSet = fronts textureSet !! 0
-renderPlayer (Just (PlayerMovement WalkDown 1)) textureSet = fronts textureSet !! 1
-renderPlayer (Just (PlayerMovement WalkDown 2)) textureSet = fronts textureSet !! 0
-renderPlayer (Just (PlayerMovement WalkDown 3)) textureSet = fronts textureSet !! 2
+renderPlayer (Just (PlayerMovement WalkDown 0)) textureSet = neutral $ fronts textureSet
+renderPlayer (Just (PlayerMovement WalkDown 1)) textureSet = walkLeft $ fronts textureSet
+renderPlayer (Just (PlayerMovement WalkDown 2)) textureSet = neutral $ fronts textureSet
+renderPlayer (Just (PlayerMovement WalkDown 3)) textureSet = walkRight $ fronts textureSet
 renderPlayer (Just (PlayerMovement WalkDown _)) _ = error "renderPlayer: outside of range"
-renderPlayer (Just (PlayerMovement WalkRight 0)) textureSet = rights textureSet !! 0
-renderPlayer (Just (PlayerMovement WalkRight 1)) textureSet = rights textureSet !! 1
-renderPlayer (Just (PlayerMovement WalkRight 2)) textureSet = rights textureSet !! 0
-renderPlayer (Just (PlayerMovement WalkRight 3)) textureSet = rights textureSet !! 2
+renderPlayer (Just (PlayerMovement WalkRight 0)) textureSet = neutral $ rights textureSet
+renderPlayer (Just (PlayerMovement WalkRight 1)) textureSet = walkLeft $ rights textureSet
+renderPlayer (Just (PlayerMovement WalkRight 2)) textureSet = neutral $ rights textureSet
+renderPlayer (Just (PlayerMovement WalkRight 3)) textureSet = walkRight $ rights textureSet
 renderPlayer (Just (PlayerMovement WalkRight _)) _ = error "renderPlayer: outside of range"
-renderPlayer (Just (PlayerMovement WalkLeft 0)) textureSet = lefts textureSet !! 0
-renderPlayer (Just (PlayerMovement WalkLeft 1)) textureSet = lefts textureSet !! 1
-renderPlayer (Just (PlayerMovement WalkLeft 2)) textureSet = lefts textureSet !! 0
-renderPlayer (Just (PlayerMovement WalkLeft 3)) textureSet = lefts textureSet !! 2
+renderPlayer (Just (PlayerMovement WalkLeft 0)) textureSet = neutral $ lefts textureSet
+renderPlayer (Just (PlayerMovement WalkLeft 1)) textureSet = walkLeft $ lefts textureSet
+renderPlayer (Just (PlayerMovement WalkLeft 2)) textureSet = neutral $ lefts textureSet
+renderPlayer (Just (PlayerMovement WalkLeft 3)) textureSet = walkRight $ lefts textureSet
 renderPlayer (Just (PlayerMovement WalkLeft _)) _ = error "renderPlayer: outside of range"
-renderPlayer Nothing textureSet = fronts textureSet !! 0
+renderPlayer Nothing textureSet = neutral $ fronts textureSet
 
 renderMonster :: MonsterStatus -> Float -> Float -> TextureSet -> TextureSet -> Picture
 renderMonster (Hunting HuntingLeft) xpos ypos _ textureSet = translate xpos ypos $ left textureSet
