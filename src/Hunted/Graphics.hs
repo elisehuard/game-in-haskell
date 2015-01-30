@@ -144,7 +144,7 @@ renderHealthBar (Monster (xmon, ymon) _ health) = Pictures [ translate xmon (ymo
 
 -- adds gameover text if appropriate
 gameOngoing :: Maybe Ending -> [Picture] -> [Picture]
-gameOngoing (Just Lose) pics =  pics ++ [Color black $ translate (-100) 0 $ Scale 0.3 0.3 $ Text "Game Over"]
+gameOngoing (Just Lose) pics =  pics ++ [Color black $ translate (-100) 0 $ Scale 0.3 0.3 $ Text "Aaargh"]
 gameOngoing (Just Win) pics =  pics ++ [Color black $ translate (-100) 0 $ Scale 0.3 0.3 $ Text "You win!"]
 gameOngoing Nothing pics =  pics
 

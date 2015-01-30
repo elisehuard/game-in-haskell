@@ -11,6 +11,7 @@ import Hunted.Graphics
 
 import FRP.Elerea.Simple as Elerea
 import Control.Applicative ((<$>), (<*>), liftA2, pure)
+import Control.Monad ((>=>))
 import Data.Maybe (isJust)
 import Graphics.Gloss.Data.ViewPort
 import System.Random (random, RandomGen(..))
@@ -95,7 +96,7 @@ playGame directionKey shootKey randomGenerator InGame = mdo
   (gameState, levelTrigger) <- switcher $ playLevel directionKey shootKey randomGenerator <$> levelCount' <*> score' <*> lives'
   levelCount <- transfer2 initialLevel statusProgression gameState levelTrigger
   levelCount' <- delay initialLevel levelCount
-  lives <- transfer initialLives decrementLives gameState
+  lives <- transfer2 initialLives decrementLives gameState levelTrigger
   lives' <- delay initialLives lives
   score <- memo (stateScore <$> gameState)
   score' <- delay 0 score
@@ -105,8 +106,8 @@ playGame directionKey shootKey randomGenerator InGame = mdo
         isGameOver (GameState StartRenderState _) = False
         stateScore (GameState (RenderState {renderState_score = s}) _) = s
         stateScore (GameState StartRenderState _) = 0
-        decrementLives (GameState (RenderState {renderState_ending = Just Lose}) _) l = l - 1
-        decrementLives (GameState _ _) l = l
+        decrementLives (GameState (RenderState {renderState_ending = Just Lose}) _) True l = l - 1
+        decrementLives (GameState _ _) _ l = l
 
 -- level progression if triggered AND the player won
 statusProgression :: GameState -> Bool -> LevelStatus -> LevelStatus
@@ -147,6 +148,7 @@ playLevel directionKey shootKey randomGenerator (Level _) currentScore lives = m
     score <- transfer currentScore accumulateScore hits
     levelOver <- memo (levelEnds <$> player <*> monster)
     levelOver' <- delay Nothing levelOver
+    delayedLevelOver <- (foldr (>=>) (delay Nothing) (replicate 50 (delay Nothing))) levelOver
     viewport <- transfer initialViewport viewPortMove player
 
     shoot <- edgify shootKey
@@ -179,7 +181,7 @@ playLevel directionKey shootKey randomGenerator (Level _) currentScore lives = m
                                  <*> (hasAny <$> shoot)
                                  <*> (boltHit <$> monster <*> bolts)
 
-    return (GameState <$> renderState <*> soundState, isJust <$> levelOver)
+    return (GameState <$> renderState <*> soundState, isJust <$> delayedLevelOver)
     where playerEaten player monster
               | distance player monster < (playerSize^2  :: Float) = Just Lose
               | otherwise                                          = Nothing
