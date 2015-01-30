@@ -3,6 +3,7 @@ module Hunted.GameTypes where
 
 import System.Random
 import Graphics.Gloss.Data.ViewPort (ViewPort)
+import Data.Monoid
 
 type Pos = (Float, Float)
 data Vec num = Vec num num
@@ -15,7 +16,8 @@ times a (x,y) = (a*x, a*y)
 infixl 7 `times`
 
 plus :: Pos -> Pos -> Pos
-plus (a,b) (c,d) = (a + c, b + d)
+plus (a,b) (c,d) = getTupleSum $ (Sum a, Sum b) <> (Sum c, Sum d)
+                   where getTupleSum (x, y) = (getSum x, getSum y)
 infixl 6 `plus`
 
 type Health = Float
