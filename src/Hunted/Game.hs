@@ -161,7 +161,7 @@ playLevel directionKey shootKey randomGenerator (Level _) currentScore lives = m
     bolts' <- delay [] bolts
 
     -- sound signals
-    statusChange <- transfer2 Nothing monitorStatusChange monster monster'
+    statusChange <- transfer3 Nothing monitorStatusChange monster monster' levelOver
     playerScreams <- Elerea.until ((== (Just Lose)) <$> levelOver)
     monsterScreams <- Elerea.until ((== (Just Win)) <$> levelOver)
 
@@ -362,11 +362,12 @@ continueDirection direction False = direction
 stepInCurrentDirection :: Direction -> (Float, Float) -> Float -> Pos
 stepInCurrentDirection direction (xpos, ypos) speed = speed `times` (stepInDirection direction) `plus` (xpos, ypos)
 
-monitorStatusChange :: Monster -> Monster -> Maybe StatusChange -> Maybe StatusChange
-monitorStatusChange (Monster _ _ num) (Monster _ _ 0) _ = if num > 0 then Just Safe else Nothing
-monitorStatusChange (Monster _ (Hunting _) _) (Monster _ (Wander _ _) _) _ = Just Danger
-monitorStatusChange (Monster _ (Wander _ _) _) (Monster _ (Hunting _) _) _ = Just Safe
-monitorStatusChange _ _ _ = Nothing
+monitorStatusChange :: Monster -> Monster -> Maybe Ending -> Maybe StatusChange -> Maybe StatusChange
+monitorStatusChange (Monster _ _ num) (Monster _ _ 0) Nothing _ = if num > 0 then Just Safe else Nothing
+monitorStatusChange _ _ (Just _) _ = Just Safe
+monitorStatusChange (Monster _ (Hunting _) _) (Monster _ (Wander _ _) _) _ _ = Just Danger
+monitorStatusChange (Monster _ (Wander _ _) _) (Monster _ (Hunting _) _) _ _ = Just Safe
+monitorStatusChange _ _ _ _ = Nothing
 
 -- output functions
 outputFunction window glossState textures dimensions sounds (GameState renderState soundState) =
