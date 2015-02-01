@@ -57,7 +57,7 @@ renderFrame :: Window
 -}
 renderFrame window glossState textures dimensions (worldWidth, worldHeight) (RenderState (Player _ playerDir) monster gameOver viewport bolts lives score) = do
    displayPicture dimensions black glossState (viewPortScale viewport) $
-     Pictures $ gameOngoing gameOver $ gameStats lives score $
+     Pictures $ gameOngoing gameOver lives $ gameStats lives score $
                              [ uncurry translate (viewPortTranslate viewport) $ tiledBackground (background textures) worldWidth worldHeight
                              , renderPlayer playerDir (player textures)
                              , uncurry translate (viewPortTranslate viewport) $ renderMonster monster (monsterWalking textures) (monsterHunting textures)
@@ -143,10 +143,11 @@ renderHealthBar (Monster (xmon, ymon) _ health) = Pictures [ translate xmon (ymo
                                                            , translate (xmon - healthBarLength/2 + health*healthBarLength/(numberOfLives*2)) (ymon + 30) $ Color red $ rectangleSolid (health*healthBarLength/numberOfLives) healthBarWidth ]
 
 -- adds gameover text if appropriate
-gameOngoing :: Maybe Ending -> [Picture] -> [Picture]
-gameOngoing (Just Lose) pics =  pics ++ [Color black $ translate (-100) 0 $ Scale 0.3 0.3 $ Text "Aaargh"]
-gameOngoing (Just Win) pics =  pics ++ [Color black $ translate (-100) 0 $ Scale 0.3 0.3 $ Text "You win!"]
-gameOngoing Nothing pics =  pics
+gameOngoing :: Maybe Ending -> Int -> [Picture] -> [Picture]
+gameOngoing (Just Lose) 1 pics =  pics ++ [Color black $ translate (-100) 0 $ Scale 0.3 0.3 $ Text "Game Over"]
+gameOngoing (Just Lose) _ pics =  pics ++ [Color black $ translate (-100) 0 $ Scale 0.3 0.3 $ Text "Aaargh"]
+gameOngoing (Just Win) _ pics =  pics ++ [Color black $ translate (-100) 0 $ Scale 0.3 0.3 $ Text "You win!"]
+gameOngoing Nothing _ pics =  pics
 
 -- add score and lives
 -- lives are reprented by circles
