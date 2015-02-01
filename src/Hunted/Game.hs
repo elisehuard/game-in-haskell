@@ -229,11 +229,8 @@ edgify s = do
   return $ s' >>= \x -> throttle x s
 
 throttle :: (Bool, Bool, Bool, Bool) -> Signal (Bool, Bool, Bool, Bool) -> Signal (Bool, Bool, Bool, Bool)
-throttle (a, d, w, s) sig
-   | a = return (False, d, w, s)
-   | d = return (a, False, w, s)
-   | w = return (a, d, False, s)
-   | s = return (a, d, w, False)
+throttle shoot@(a, d, w, s) sig
+   | hasAny shoot = return (False, False, False, False)
    | otherwise = sig
 
 -- boltStillGoing depends on the bolt range and on whether it hit the monster
