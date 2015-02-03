@@ -52,7 +52,8 @@ data RenderState = RenderState { renderState_player :: Player
                                , renderState_viewport :: ViewPort
                                , renderState_bolts :: [Bolt]
                                , renderState_lives :: Int
-                               , renderState_score :: Float }
+                               , renderState_score :: Float
+                               , renderState_animation :: Maybe Animation }
                  | StartRenderState
 data SoundState = SoundState { mood :: (Maybe StatusChange)
                              , playerScreams :: Bool
@@ -77,3 +78,6 @@ data LevelStatus = Level Int
                    deriving Show
 data GameStatus = Start | InGame
                   deriving Show
+
+data Animation = DeathAnimation Float | NextLevelAnimation LevelStatus Float
+                 deriving Show

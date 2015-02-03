@@ -55,9 +55,14 @@ renderFrame :: Window
                -> RenderState
                -> IO ()
 -}
-renderFrame window glossState textures dimensions (worldWidth, worldHeight) (RenderState (Player _ playerDir) monster gameOver viewport bolts lives score) = do
+renderFrame window
+            glossState
+            textures
+            dimensions
+            (worldWidth, worldHeight)
+            (RenderState (Player _ playerDir) monster gameOver viewport bolts lives score mbAnimation) = do
    displayPicture dimensions black glossState (viewPortScale viewport) $
-     Pictures $ gameOngoing gameOver lives $ gameStats lives score $
+     Pictures $ animation mbAnimation dimensions $ gameOngoing gameOver lives $ gameStats lives score $
                              [ uncurry translate (viewPortTranslate viewport) $ tiledBackground (background textures) worldWidth worldHeight
                              , renderPlayer playerDir (player textures)
                              , uncurry translate (viewPortTranslate viewport) $ renderMonster monster (monsterWalking textures) (monsterHunting textures)
@@ -155,3 +160,13 @@ gameStats :: Int -> Float -> [Picture] -> [Picture]
 gameStats lives score pics = pics ++ [ Color black $ translate 280 200 $ Scale 0.2 0.2 $ Text $ show score
                                      , Color black $ translate (-300) 200 $ Scale 0.2 0.2 $ Text "lives: "]
                                   ++ map (\i -> Color red $ translate ((-230) + 40*i) 210 $ circleSolid 10) [0..(fromIntegral (lives - 1))]
+
+animation :: Maybe Animation -> (Int, Int) -> [Picture] -> [Picture]
+animation Nothing                      _     pics = pics
+animation (Just (DeathAnimation n))      _     pics = pics
+animation (Just (NextLevelAnimation l n)) (w, h) pics = pics ++
+                                                    [ Color (animationColor n) $ rectangleSolid (fromIntegral w) (fromIntegral h)
+                                                    , Color white $ translate (-100) 0 $ scale 0.3 0.3 $ Text $ show l ]
+                                                    where animationColor n
+                                                            | n > 25 = makeColor 0 0 0 (0.04*(50-n))
+                                                            | otherwise = makeColor 0 0 0 (0.04*n)

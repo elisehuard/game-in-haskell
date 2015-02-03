@@ -136,7 +136,7 @@ playLevel :: RandomGen t =>
           -> Float
           -> Int
           -> SignalGen (Signal GameState, Signal Bool)
-playLevel directionKey shootKey randomGenerator (Level _) currentScore lives = mdo
+playLevel directionKey shootKey randomGenerator level@(Level _) currentScore lives = mdo
 
     -- render signals
     let worldDimensions = (worldWidth, worldHeight)
@@ -148,7 +148,7 @@ playLevel directionKey shootKey randomGenerator (Level _) currentScore lives = m
     score <- transfer currentScore accumulateScore hits
     levelOver <- memo (levelEnds <$> player <*> monster)
     levelOver' <- delay Nothing levelOver
-    delayedLevelOver <- (foldr (>=>) (delay Nothing) (replicate 50 (delay Nothing))) levelOver
+    animation <- transfer Nothing (endAnimation level) levelOver
     viewport <- transfer initialViewport viewPortMove player
 
     shoot <- edgify shootKey
@@ -174,6 +174,7 @@ playLevel directionKey shootKey randomGenerator (Level _) currentScore lives = m
                                   <*> bolts
                                   <*> pure lives
                                   <*> score
+                                  <*> animation
         soundState  = SoundState <$> statusChange
                                  <*> playerScreams
                                  <*> hunting
@@ -181,7 +182,7 @@ playLevel directionKey shootKey randomGenerator (Level _) currentScore lives = m
                                  <*> (hasAny <$> shoot)
                                  <*> (boltHit <$> monster <*> bolts)
 
-    return (GameState <$> renderState <*> soundState, isJust <$> delayedLevelOver)
+    return (GameState <$> renderState <*> soundState, animationEnd <$> animation)
     where playerEaten player monster
               | distance player monster < (playerSize^2  :: Float) = Just Lose
               | otherwise                                          = Nothing
@@ -211,15 +212,29 @@ collection source isAlive = mdo
 hasAny :: (Bool, Bool, Bool, Bool) -> Bool
 hasAny (l, r, u, d) = l || r || u || d
 
+endAnimation :: LevelStatus -> Maybe Ending -> Maybe Animation -> Maybe Animation
+endAnimation _         _           (Just (DeathAnimation 0))     = Just (DeathAnimation 0)
+endAnimation _         _           (Just (NextLevelAnimation l 0)) = Just (NextLevelAnimation l 0)
+endAnimation _         _           (Just (DeathAnimation n))     = Just (DeathAnimation (n - 1))
+endAnimation _         _           (Just (NextLevelAnimation l n)) = Just (NextLevelAnimation l (n - 1))
+endAnimation _         (Just Lose) _                           = Just $ DeathAnimation 50
+endAnimation (Level n) (Just Win)  _                           = Just $ NextLevelAnimation (Level (n+1)) 50
+endAnimation _         _           Nothing                     = Nothing
+
+animationEnd (Just (DeathAnimation 0)) = True
+animationEnd (Just (NextLevelAnimation _ 0)) = True
+animationEnd _ = False
+
 moveBolt :: Bolt -> Bolt
 moveBolt (Bolt (xpos, ypos) direction range hit) = Bolt (boltSpeed `times` (stepInDirection direction) `plus` (xpos, ypos)) direction (range - 1) hit
 
 boltIsAlive :: (Float, Float) -> Monster -> Bolt -> Bool
 boltIsAlive worldDimensions monster bolt = (not (hasHit monster bolt)) && boltStillGoing worldDimensions bolt
 
+-- let it come closer so that the hit can be registered before removing the bolt
 hasHit :: Monster -> Bolt -> Bool
 hasHit (Monster (xmon, ymon) _ _) (Bolt (x, y) _ _ _)
-  | dist (xmon, ymon) (x, y) < ((monsterSize/2)^2) = True
+  | dist (xmon, ymon) (x, y) < ((monsterSize/4)^2) = True
   | otherwise = False
 
 edgify :: Signal (Bool, Bool, Bool, Bool)
