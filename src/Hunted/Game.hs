@@ -94,7 +94,7 @@ playGame _ shootKey _ Start = mdo
 -- bool should be gameOver
 playGame directionKey shootKey randomGenerator InGame = mdo
   (gameState, levelTrigger) <- switcher $ playLevel directionKey shootKey randomGenerator <$> levelCount' <*> score' <*> lives'
-  levelCount <- transfer2 initialLevel statusProgression gameState levelTrigger
+  levelCount <- transfer2 initialLevel levelProgression gameState levelTrigger
   levelCount' <- delay initialLevel levelCount
   lives <- transfer2 initialLives decrementLives gameState levelTrigger
   lives' <- delay initialLives lives
@@ -110,12 +110,12 @@ playGame directionKey shootKey randomGenerator InGame = mdo
         decrementLives (GameState _ _) _ l = l
 
 -- level progression if triggered AND the player won
-statusProgression :: GameState -> Bool -> LevelStatus -> LevelStatus
-statusProgression _                                                            False level     = level
-statusProgression (GameState (RenderState {renderState_ending = Just Win}) _)  True  (Level n) = Level (n + 1)
-statusProgression (GameState (RenderState {renderState_ending = Just Lose}) _) True  level     = level
-statusProgression (GameState (RenderState {renderState_ending = Nothing}) _)   True  level     = level
-statusProgression (GameState StartRenderState _)                               _     level     = level
+levelProgression :: GameState -> Bool -> LevelStatus -> LevelStatus
+levelProgression _                                                            False level     = level
+levelProgression (GameState (RenderState {renderState_ending = Just Win}) _)  True  (Level n) = Level (n + 1)
+levelProgression (GameState (RenderState {renderState_ending = Just Lose}) _) True  level     = level
+levelProgression (GameState (RenderState {renderState_ending = Nothing}) _)   True  level     = level
+levelProgression (GameState StartRenderState _)                               _     level     = level
 
 switcher :: Signal (SignalGen (Signal GameState, Signal Bool)) -> SignalGen (Signal GameState, Signal Bool)
 switcher levelGen = mdo
