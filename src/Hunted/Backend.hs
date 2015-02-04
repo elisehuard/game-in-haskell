@@ -10,8 +10,8 @@ import "GLFW-b" Graphics.UI.GLFW as GLFW
 import Control.Monad (when)
 import Control.Applicative ((<$>), (<*>))
 
-withWindow :: Int -> Int -> String -> (GLFW.Window -> IO ()) -> IO ()
-withWindow width height title f = do
+--withWindow :: Int -> Int -> String -> (GLFW.Window -> IO ()) -> IO ()
+withWindow width height windowSizeSink title f = do
     GLFW.setErrorCallback $ Just simpleErrorCallback
     r <- GLFW.init
     when r $ do
@@ -19,6 +19,7 @@ withWindow width height title f = do
         case m of
           (Just win) -> do
               GLFW.makeContextCurrent m
+              setWindowSizeCallback win $ Just $ resize windowSizeSink
               f win
               GLFW.setErrorCallback $ Just simpleErrorCallback
               GLFW.destroyWindow win
@@ -27,6 +28,9 @@ withWindow width height title f = do
   where
     simpleErrorCallback e s =
         putStrLn $ unwords [show e, show s]
+
+resize :: ((Int, Int) -> IO()) -> Window -> Int -> Int -> IO()
+resize windowSizeSink _ w h = windowSizeSink (w, h)
 
 keyIsPressed :: Window -> Key -> IO Bool
 keyIsPressed win key = isPress `fmap` GLFW.getKey win key

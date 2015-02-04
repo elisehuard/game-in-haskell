@@ -58,9 +58,16 @@ renderFrame :: Window
 renderFrame window
             glossState
             textures
-            dimensions
             (worldWidth, worldHeight)
-            (RenderState (Player _ playerDir) monster gameOver viewport bolts lives score mbAnimation) = do
+            (RenderState (Player _ playerDir)
+                         monster
+                         gameOver
+                         viewport
+                         bolts
+                         lives
+                         score
+                         mbAnimation
+                         dimensions) = do
    displayPicture dimensions black glossState (viewPortScale viewport) $
      Pictures $ animation mbAnimation dimensions $ gameOngoing gameOver lives $ gameStats lives score $
                              [ uncurry translate (viewPortTranslate viewport) $ tiledBackground (background textures) worldWidth worldHeight
@@ -70,7 +77,7 @@ renderFrame window
                               ++ (map (uncurry translate (viewPortTranslate viewport) . renderBolt) bolts)
    swapBuffers window
 
-renderFrame window glossState _ dimensions _ StartRenderState = do
+renderFrame window glossState _ _ (StartRenderState dimensions) = do
   displayPicture dimensions black glossState 1 $
     Pictures [ Color green $ translate (-140) 0 $ scale 0.4 0.4 $ Text "Hunting Season"
              , Color green $ translate (-140) (-50) $ scale 0.1 0.1 $ Text "Press s to get started" ]

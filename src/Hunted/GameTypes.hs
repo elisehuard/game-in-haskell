@@ -53,8 +53,9 @@ data RenderState = RenderState { renderState_player :: Player
                                , renderState_bolts :: [Bolt]
                                , renderState_lives :: Int
                                , renderState_score :: Float
-                               , renderState_animation :: Maybe Animation }
-                 | StartRenderState
+                               , renderState_animation :: Maybe Animation
+                               , renderState_windowSize :: (Int, Int) }
+                 | StartRenderState (Int, Int)
 data SoundState = SoundState { mood :: (Maybe StatusChange)
                              , playerScreams :: Bool
                              , hunting :: Bool

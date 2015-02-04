@@ -20,14 +20,15 @@ main :: IO ()
 main = do
     (directionKey, directionKeySink) <- external (False, False, False, False)
     (shootKey, shootKeySink) <- external (False, False, False, False)
+    (windowSize,windowSizeSink) <- external (fromIntegral width, fromIntegral height)
     randomGenerator <- newStdGen
     glossState <- initState
     textures <- loadTextures
-    withWindow width height "Game-Demo" $ \win -> do
+    withWindow width height windowSizeSink "Game-Demo" $ \win -> do
       withSound $ \_ _ -> do
           sounds <- loadSounds
           backgroundMusic (backgroundTune sounds)
-          network <- start $ hunted win (width,height) directionKey shootKey randomGenerator textures glossState sounds
+          network <- start $ hunted win windowSize directionKey shootKey randomGenerator textures glossState sounds
           fix $ \loop -> do
                readInput win directionKeySink shootKeySink
                join network
