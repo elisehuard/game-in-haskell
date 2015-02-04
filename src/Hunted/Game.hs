@@ -11,8 +11,6 @@ import Hunted.Graphics
 
 import FRP.Elerea.Simple as Elerea
 import Control.Applicative ((<$>), (<*>), liftA2, pure)
-import Control.Monad ((>=>))
-import Data.Maybe (isJust)
 import Graphics.Gloss.Data.ViewPort
 import System.Random (random, RandomGen(..))
 
@@ -155,9 +153,9 @@ playLevel windowSize directionKey shootKey randomGenerator level@(Level _) curre
     viewport <- transfer initialViewport viewPortMove player
 
     shoot <- edgify shootKey
-    let bolt direction range position = stateful (Bolt position direction range False) moveBolt
-        mkShot shot player = if hasAny shot
-                              then (:[]) <$> bolt (dirFrom shot) boltRange (position player)
+    let bolt direction range startPosition = stateful (Bolt startPosition direction range False) moveBolt
+        mkShot shot currentPlayer = if hasAny shot
+                              then (:[]) <$> bolt (dirFrom shot) boltRange (position currentPlayer)
                               else return []
     newBolts <- generator (mkShot <$> shoot <*> player)
     bolts <- collection newBolts (boltIsAlive worldDimensions <$> monster)
@@ -169,7 +167,7 @@ playLevel windowSize directionKey shootKey randomGenerator level@(Level _) curre
     monsterScreams <- Elerea.until ((== (Just Win)) <$> levelOver)
 
 
-    let hunting = stillHunting <$> monster <*> levelOver
+    let monsterIsHunting = stillHunting <$> monster <*> levelOver
         renderState = RenderState <$> player
                                   <*> monster
                                   <*> levelOver
@@ -181,7 +179,7 @@ playLevel windowSize directionKey shootKey randomGenerator level@(Level _) curre
                                   <*> windowSize
         soundState  = SoundState <$> statusChange
                                  <*> playerScreams
-                                 <*> hunting
+                                 <*> monsterIsHunting
                                  <*> monsterScreams
                                  <*> (hasAny <$> shoot)
                                  <*> (boltHit <$> monster <*> bolts)
@@ -225,12 +223,13 @@ endAnimation _         (Just Lose) _                           = Just $ DeathAni
 endAnimation (Level n) (Just Win)  _                           = Just $ NextLevelAnimation (Level (n+1)) 50
 endAnimation _         _           Nothing                     = Nothing
 
+animationEnd :: Maybe Animation -> Bool
 animationEnd (Just (DeathAnimation 0)) = True
 animationEnd (Just (NextLevelAnimation _ 0)) = True
 animationEnd _ = False
 
 moveBolt :: Bolt -> Bolt
-moveBolt (Bolt (xpos, ypos) direction range hit) = Bolt (boltSpeed `times` (stepInDirection direction) `plus` (xpos, ypos)) direction (range - 1) hit
+moveBolt (Bolt (xpos, ypos) direction range alreadyHit) = Bolt (boltSpeed `times` (stepInDirection direction) `plus` (xpos, ypos)) direction (range - 1) alreadyHit
 
 boltIsAlive :: (Float, Float) -> Monster -> Bolt -> Bool
 boltIsAlive worldDimensions monster bolt = (not (hasHit monster bolt)) && boltStillGoing worldDimensions bolt
@@ -248,14 +247,14 @@ edgify s = do
   return $ s' >>= \x -> throttle x s
 
 throttle :: (Bool, Bool, Bool, Bool) -> Signal (Bool, Bool, Bool, Bool) -> Signal (Bool, Bool, Bool, Bool)
-throttle shoot@(a, d, w, s) sig
-   | hasAny shoot = return (False, False, False, False)
+throttle shot sig
+   | hasAny shot = return (False, False, False, False)
    | otherwise = sig
 
 -- boltStillGoing depends on the bolt range and on whether it hit the monster
 boltStillGoing :: (Float, Float) -> Bolt -> Bool
-boltStillGoing (width, height) (Bolt (x, y) _ range hit) =
-    (not hit) && (range > 0) && x < width/2 && y < height/2
+boltStillGoing (width, height) (Bolt (x, y) _ range alreadyHit) =
+    (not alreadyHit) && (range > 0) && x < width/2 && y < height/2
 
 stillHunting :: Monster -> Maybe Ending -> Bool
 stillHunting _                         (Just _)  = False
@@ -307,7 +306,7 @@ hitOrMiss hits (Monster (xmon, ymon) status health) =
 monsterHits :: Monster -> [Bolt] -> Float
 monsterHits monster bolts = fromIntegral $ length
                                          $ filter (<= (monsterSize/2)^2) (boltDistances monster (filter notCounted bolts))
-                                         where notCounted (Bolt _ _ _ hit) = not hit
+                                         where notCounted (Bolt _ _ _ alreadyHit) = not alreadyHit
 
 accumulateScore :: Float -> Float -> Float
 accumulateScore hits score = score + hits
