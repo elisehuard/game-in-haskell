@@ -69,7 +69,7 @@ renderFrame window
                          mbAnimation
                          dimensions) = do
    displayPicture dimensions black glossState (viewPortScale viewport) $
-     Pictures $ animation mbAnimation dimensions $ gameOngoing gameOver lives $ gameStats lives score $
+     Pictures $ animation mbAnimation dimensions $ gameOngoing gameOver lives $ gameStats lives score dimensions $
                              [ uncurry translate (viewPortTranslate viewport) $ tiledBackground (background textures) worldWidth worldHeight
                              , renderPlayer playerDir (player textures)
                              , uncurry translate (viewPortTranslate viewport) $ renderMonster monster (monsterWalking textures) (monsterHunting textures)
@@ -163,10 +163,14 @@ gameOngoing Nothing _ pics =  pics
 
 -- add score and lives
 -- lives are reprented by circles
-gameStats :: Int -> Float -> [Picture] -> [Picture]
-gameStats lives score pics = pics ++ [ Color black $ translate 280 200 $ Scale 0.2 0.2 $ Text $ show score
-                                     , Color black $ translate (-300) 200 $ Scale 0.2 0.2 $ Text "lives: "]
-                                  ++ map (\i -> Color red $ translate ((-230) + 40*i) 210 $ circleSolid 10) [0..(fromIntegral (lives - 1))]
+--gameStats :: Int -> Float -> (Int, Int) -> [Picture] -> [Picture]
+gameStats l s (w, h) p | trace ("gameStats " ++ show w ++ " " ++ show h) False = undefined
+gameStats lives score (w, h) pics = do
+  let fWidth = fromIntegral w
+      fHeight = fromIntegral h
+  pics ++ [ Color black $ translate (fWidth/2 - 80) (fHeight/2 - 50) $ Scale 0.2 0.2 $ Text $ show score
+          , Color black $ translate ((-fWidth)/2 + 20) (fHeight/2 - 50) $ Scale 0.2 0.2 $ Text "lives: "]
+       ++ map (\i -> Color red $ translate ((-fWidth)/2 + 90 + 40*i) (fHeight/2 - 40) $ circleSolid 10) [0..(fromIntegral (lives - 1))]
 
 animation :: Maybe Animation -> (Int, Int) -> [Picture] -> [Picture]
 animation Nothing                      _     pics = pics
