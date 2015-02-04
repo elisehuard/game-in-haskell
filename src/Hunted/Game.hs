@@ -306,7 +306,8 @@ hitOrMiss hits (Monster (xmon, ymon) status health) =
 
 monsterHits :: Monster -> [Bolt] -> Float
 monsterHits monster bolts = fromIntegral $ length
-                                         $ filter (<= (monsterSize/2)^2) (boltDistances monster bolts)
+                                         $ filter (<= (monsterSize/2)^2) (boltDistances monster (filter notCounted bolts))
+                                         where notCounted (Bolt _ _ _ hit) = not hit
 
 accumulateScore :: Float -> Float -> Float
 accumulateScore hits score = score + hits
