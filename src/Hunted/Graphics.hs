@@ -1,3 +1,4 @@
+{-# OPTIONS_GHC -fno-warn-type-defaults #-}
 module Hunted.Graphics (
   loadTextures
 , initState
@@ -163,18 +164,17 @@ gameOngoing Nothing _ pics =  pics
 
 -- add score and lives
 -- lives are reprented by circles
---gameStats :: Int -> Float -> (Int, Int) -> [Picture] -> [Picture]
-gameStats l s (w, h) p | trace ("gameStats " ++ show w ++ " " ++ show h) False = undefined
+gameStats :: Int -> Float -> (Int, Int) -> [Picture] -> [Picture]
 gameStats lives score (w, h) pics = do
   let fWidth = fromIntegral w
       fHeight = fromIntegral h
-  pics ++ [ Color black $ translate (fWidth/2 - 80) (fHeight/2 - 50) $ Scale 0.2 0.2 $ Text $ show score
+  pics ++ [ Color black $ translate (fWidth/2 - 80) (fHeight/2 - 50) $ Scale 0.2 0.2 $ Text $ show $ round score
           , Color black $ translate ((-fWidth)/2 + 20) (fHeight/2 - 50) $ Scale 0.2 0.2 $ Text "lives: "]
        ++ map (\i -> Color red $ translate ((-fWidth)/2 + 90 + 40*i) (fHeight/2 - 40) $ circleSolid 10) [0..(fromIntegral (lives - 1))]
 
 animation :: Maybe Animation -> (Int, Int) -> [Picture] -> [Picture]
-animation Nothing                      _     pics = pics
-animation (Just (DeathAnimation n))      _     pics = pics
+animation Nothing                         _      pics = pics
+animation (Just (DeathAnimation _))       _      pics = pics
 animation (Just (NextLevelAnimation l n)) (w, h) pics = pics ++
                                                     [ Color (animationColor n) $ rectangleSolid (fromIntegral w) (fromIntegral h)
                                                     , Color white $ translate (-100) 0 $ scale 0.3 0.3 $ Text $ show l ]
