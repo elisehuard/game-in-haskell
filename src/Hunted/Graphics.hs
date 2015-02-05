@@ -12,6 +12,7 @@ import Graphics.Gloss hiding (play)
 import Graphics.Gloss.Rendering
 import Graphics.Gloss.Data.ViewPort
 import Control.Applicative ((<*>), (<$>))
+import qualified Data.Map.Strict as Map
 
 data TextureSet = TextureSet { front :: Picture, back :: Picture, left :: Picture, right :: Picture }
                 | PlayerTextureSet { fronts :: WalkingTexture, backs :: WalkingTexture, lefts :: WalkingTexture, rights :: WalkingTexture }
@@ -21,7 +22,9 @@ data WalkingTexture = WalkingTexture { neutral :: Picture, walkLeft :: Picture, 
 data Textures = Textures { background :: Picture
                          , player :: TextureSet
                          , monsterWalking :: TextureSet
-                         , monsterHunting :: TextureSet }
+                         , monsterHunting :: TextureSet
+                         , texts :: Map.Map String Picture
+                         , boltTextures :: TextureSet }
 
 loadTextures :: IO Textures
 loadTextures = do
@@ -38,11 +41,18 @@ loadTextures = do
                                     <*> loadBMP "images/monster-hunting-right.bmp"
                                     <*> loadBMP "images/monster-hunting-left.bmp"
                                     <*> loadBMP "images/monster-hunting-right.bmp"
+    boltSet <- TextureSet <$> loadBMP "images/bolt-up.bmp"
+                          <*> loadBMP "images/bolt-down.bmp"
+                          <*> loadBMP "images/bolt-left.bmp"
+                          <*> loadBMP "images/bolt-right.bmp"
     backgroundTexture <- loadBMP "images/background-tile.bmp"
+    gameOverText <- loadBMP "images/game-over.bmp"
     return Textures { background = backgroundTexture
                     , player = playerTextureSet
                     , monsterWalking = monsterWalkingSet
-                    , monsterHunting = monsterHuntingSet }
+                    , monsterHunting = monsterHuntingSet
+                    , texts = Map.singleton "game-over" gameOverText
+                    , boltTextures = boltSet }
 
 loadAnims :: String -> String -> String -> IO WalkingTexture
 loadAnims path1 path2 path3 = WalkingTexture <$> loadBMP path1 <*> loadBMP path2 <*> loadBMP path3
@@ -70,12 +80,12 @@ renderFrame window
                          mbAnimation
                          dimensions) = do
    displayPicture dimensions black glossState (viewPortScale viewport) $
-     Pictures $ animation mbAnimation dimensions $ gameOngoing gameOver lives $ gameStats lives score dimensions $
+     Pictures $ animation mbAnimation dimensions $ gameOngoing gameOver lives (texts textures) $ gameStats lives score dimensions $
                              [ uncurry translate (viewPortTranslate viewport) $ tiledBackground (background textures) worldWidth worldHeight
                              , renderPlayer playerDir (player textures)
                              , uncurry translate (viewPortTranslate viewport) $ renderMonster monster (monsterWalking textures) (monsterHunting textures)
                              , uncurry translate (viewPortTranslate viewport) $ renderHealthBar monster ]
-                              ++ (map (uncurry translate (viewPortTranslate viewport) . renderBolt) bolts)
+                              ++ (map (uncurry translate (viewPortTranslate viewport) . (renderBolt (boltTextures textures))) bolts)
    swapBuffers window
 
 renderFrame window glossState _ _ (StartRenderState dimensions) = do
@@ -107,37 +117,33 @@ translateMatrix w h = concat $ map (zip xTiles)
                             lowerbound size = -(higherbound size)
 
 renderPlayer :: Maybe PlayerMovement -> TextureSet -> Picture
-renderPlayer (Just (PlayerMovement WalkUp One)) textureSet = neutral $ backs textureSet
-renderPlayer (Just (PlayerMovement WalkUp Two)) textureSet = walkLeft $ backs textureSet
-renderPlayer (Just (PlayerMovement WalkUp Three)) textureSet = neutral $ backs textureSet
-renderPlayer (Just (PlayerMovement WalkUp Four)) textureSet = walkRight $ backs textureSet
-renderPlayer (Just (PlayerMovement WalkDown One)) textureSet = neutral $ fronts textureSet
-renderPlayer (Just (PlayerMovement WalkDown Two)) textureSet = walkLeft $ fronts textureSet
-renderPlayer (Just (PlayerMovement WalkDown Three)) textureSet = neutral $ fronts textureSet
-renderPlayer (Just (PlayerMovement WalkDown Four)) textureSet = walkRight $ fronts textureSet
-renderPlayer (Just (PlayerMovement WalkRight One)) textureSet = neutral $ rights textureSet
-renderPlayer (Just (PlayerMovement WalkRight Two)) textureSet = walkLeft $ rights textureSet
-renderPlayer (Just (PlayerMovement WalkRight Three)) textureSet = neutral $ rights textureSet
-renderPlayer (Just (PlayerMovement WalkRight Four)) textureSet = walkRight $ rights textureSet
-renderPlayer (Just (PlayerMovement WalkLeft One)) textureSet = neutral $ lefts textureSet
-renderPlayer (Just (PlayerMovement WalkLeft Two)) textureSet = walkLeft $ lefts textureSet
-renderPlayer (Just (PlayerMovement WalkLeft Three)) textureSet = neutral $ lefts textureSet
-renderPlayer (Just (PlayerMovement WalkLeft Four)) textureSet = walkRight $ lefts textureSet
+renderPlayer (Just (PlayerMovement dir One)) textureSet = neutral $ playerDirectionTexture dir textureSet
+renderPlayer (Just (PlayerMovement dir Two)) textureSet = walkLeft $ playerDirectionTexture dir textureSet
+renderPlayer (Just (PlayerMovement dir Three)) textureSet = neutral $ playerDirectionTexture dir textureSet
+renderPlayer (Just (PlayerMovement dir Four)) textureSet = walkRight $ playerDirectionTexture dir textureSet
 renderPlayer Nothing textureSet = neutral $ fronts textureSet
 
 renderMonster :: Monster -> TextureSet -> TextureSet -> Picture
-renderMonster (Monster (xpos, ypos) (Hunting WalkLeft) _) _ textureSet = translate xpos ypos $ left textureSet
-renderMonster (Monster (xpos, ypos) (Hunting WalkRight) _) _ textureSet = translate xpos ypos $ right textureSet
-renderMonster (Monster (xpos, ypos) (Hunting WalkUp) _) _ textureSet = translate xpos ypos $ back textureSet
-renderMonster (Monster (xpos, ypos) (Hunting WalkDown) _) _ textureSet = translate xpos ypos $ front textureSet
+renderMonster (Monster (xpos, ypos) (Hunting dir) _) _ textureSet = translate xpos ypos $ directionTexture dir textureSet
 renderMonster (Monster (xpos, ypos) (Wander WalkUp _) _) textureSet _ = translate xpos ypos $ back textureSet
 renderMonster (Monster (xpos, ypos) (Wander WalkDown _) _) textureSet _ = translate xpos ypos $ front textureSet
 renderMonster (Monster (xpos, ypos) (Wander WalkLeft n) _) textureSet _ = translate xpos ypos $ rotate (16* fromIntegral n) $ left textureSet
 renderMonster (Monster (xpos, ypos) (Wander WalkRight n) _) textureSet _ = translate xpos ypos $ rotate ((-16)* fromIntegral n) $ right textureSet
 
-renderBolt :: Bolt -> Picture
-renderBolt (Bolt (xpos, ypos) _ _ _) = translate xpos ypos $ Color (greyN 0.7) $ circleSolid 5
+renderBolt :: TextureSet -> Bolt -> Picture
+renderBolt textureSet (Bolt (xpos, ypos) dir _ _) = translate xpos ypos $ directionTexture dir textureSet
 
+directionTexture :: Direction -> TextureSet -> Picture
+directionTexture WalkUp = front
+directionTexture WalkDown = back
+directionTexture WalkLeft = left
+directionTexture WalkRight = right
+
+playerDirectionTexture :: Direction -> TextureSet -> WalkingTexture
+playerDirectionTexture WalkUp = fronts
+playerDirectionTexture WalkDown = backs
+playerDirectionTexture WalkLeft = lefts
+playerDirectionTexture WalkRight = rights
 -- [x x x x x]
 -- [0 0]
 -- 1 centered around xmon, size bar
@@ -156,11 +162,11 @@ renderHealthBar (Monster (xmon, ymon) _ health) = Pictures [ translate xmon (ymo
                                                            , translate (xmon - healthBarLength/2 + health*healthBarLength/(numberOfLives*2)) (ymon + 30) $ Color red $ rectangleSolid (health*healthBarLength/numberOfLives) healthBarWidth ]
 
 -- adds gameover text if appropriate
-gameOngoing :: Maybe Ending -> Int -> [Picture] -> [Picture]
-gameOngoing (Just Lose) 1 pics =  pics ++ [Color black $ translate (-100) 0 $ Scale 0.3 0.3 $ Text "Game Over"]
-gameOngoing (Just Lose) _ pics =  pics ++ [Color black $ translate (-100) 0 $ Scale 0.3 0.3 $ Text "Aaargh"]
-gameOngoing (Just Win) _ pics =  pics ++ [Color black $ translate (-100) 0 $ Scale 0.3 0.3 $ Text "You win!"]
-gameOngoing Nothing _ pics =  pics
+gameOngoing :: Maybe Ending -> Int -> Map.Map String Picture -> [Picture] -> [Picture]
+gameOngoing (Just Lose) 1 texts pics =  pics ++ [translate (-50) 0 $ (texts Map.! "game-over")]
+gameOngoing (Just Lose) _ _     pics =  pics ++ [Color black $ translate (-100) 0 $ Scale 0.3 0.3 $ Text "Aaargh"]
+gameOngoing (Just Win)  _ _     pics =  pics ++ [Color black $ translate (-100) 0 $ Scale 0.3 0.3 $ Text "You win!"]
+gameOngoing Nothing     _ _     pics =  pics
 
 -- add score and lives
 -- lives are reprented by circles
