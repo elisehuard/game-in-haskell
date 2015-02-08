@@ -146,7 +146,7 @@ loadAnims :: String -> String -> String -> IO WalkingTexture
 loadAnims path1 path2 path3 = WalkingTexture <$> loadBMP path1 <*> loadBMP path2 <*> loadBMP path3
 
 hunted win directionKey randomGenerator textures glossState sounds = mdo
-    player <- transfer2 initialPlayer (\p dead dK -> movePlayer p dK dead 10) directionKey gameOver'
+    player <- transfer2 initialPlayer (movePlayer 10) directionKey gameOver'
     randomNumber <- stateful (undefined, randomGenerator) nextRandom
     monster <- transfer3 initialMonster wanderOrHunt player randomNumber gameOver'
     monster' <- delay initialMonster monster
@@ -182,9 +182,9 @@ readInput window directionKeySink = do
     d <- keyIsPressed window Key'Down
     directionKeySink (l, r, u, d)
 
-movePlayer :: (Bool, Bool, Bool, Bool) -> Player -> Bool -> Float -> Player
-movePlayer _ player True _ = player
-movePlayer direction player False increment
+movePlayer :: Float -> (Bool, Bool, Bool, Bool) -> Bool -> Player -> Player
+movePlayer _ _ True player = player
+movePlayer increment direction False player
          | outsideOfLimits (position (move direction player increment)) playerSize = player
          | otherwise = move direction player increment
 

@@ -52,7 +52,7 @@ main = do
           exitSuccess
 
 hunted win directionKey randomGenerator glossState = mdo
-    player <- transfer2 initialPlayer (\p dead dK -> movePlayer p dK dead 10) directionKey gameOver'
+    player <- transfer2 initialPlayer (movePlayer 10) directionKey gameOver'
     randomNumber <- stateful (undefined, randomGenerator) nextRandom
     monster <- transfer3 initialMonster wanderOrHunt player randomNumber gameOver'
     gameOver <- memo (playerEaten <$> player <*> monster)
@@ -69,9 +69,9 @@ readInput window directionKeySink = do
     d <- keyIsPressed window Key'Down
     directionKeySink (l, r, u, d)
 
-movePlayer :: (Bool, Bool, Bool, Bool) -> Player -> Bool -> Float -> Player
-movePlayer _ player True _ = player
-movePlayer direction player@(Player (xpos, ypos)) False increment
+movePlayer :: Float -> (Bool, Bool, Bool, Bool) -> Bool -> Player -> Player
+movePlayer _ _ True player = player
+movePlayer increment direction False player
          | outsideOfLimits (position (move direction player increment)) playerSize = player
          | otherwise = move direction player increment
 
