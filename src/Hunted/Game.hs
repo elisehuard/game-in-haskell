@@ -11,14 +11,16 @@ import Hunted.Graphics
 
 import FRP.Elerea.Simple as Elerea
 import Control.Applicative ((<$>), (<*>), liftA2, pure)
+import Data.Maybe (mapMaybe)
+import Data.Foldable (foldl')
 import Graphics.Gloss.Data.ViewPort
-import System.Random (random, RandomGen(..))
+import System.Random (random, RandomGen(..), randomRs)
 
 initialPlayer :: Player
 initialPlayer = Player (0, 0) Nothing
 
-initialMonster :: Monster
-initialMonster = Monster (200, 200) (Wander WalkUp wanderDist) 4
+initialMonster :: (Float, Float) -> Monster
+initialMonster pos = Monster pos (Wander WalkUp wanderDist) 4
 
 initialViewport :: ViewPort
 initialViewport = ViewPort { viewPortTranslate = (0, 0), viewPortRotate = 0, viewPortScale = viewportScale }
@@ -137,17 +139,21 @@ playLevel :: RandomGen t =>
           -> Float
           -> Int
           -> SignalGen (Signal GameState, Signal Bool)
-playLevel windowSize directionKey shootKey randomGenerator level@(Level _) currentScore lives = mdo
+-}
+playLevel windowSize directionKey shootKey randomGenerator level@(Level n) currentScore lives = mdo
 
     -- render signals
     let worldDimensions = (worldWidth, worldHeight)
     player <- transfer2 initialPlayer (\p dead dK -> movePlayer p dK dead 10 worldDimensions) directionKey levelOver'
+        randomWidths = take n $ randomRs (round ((-worldWidth)/2), round (worldWidth/2)) randomGenerator :: [Int]
+        randomHeights = take n $ randomRs (round ((-worldWidth)/2), round (worldWidth/2)) randomGenerator :: [Int]
+        positions = zip (map fromIntegral randomWidths) (map fromIntegral randomHeights)
     randomNumber <- stateful (undefined, randomGenerator) nextRandom
-    hits <- memo (monsterHits <$> monster' <*> bolts')
-    monster <- transfer4 initialMonster (wanderOrHunt worldDimensions) player randomNumber levelOver' hits
-    monster' <- delay initialMonster monster
+    hits <- memo (fmap <$> (monsterHits <$> bolts') <*> monsters')
+    monsters <- transfer4 (fmap initialMonster positions) (monsterWanderings worldDimensions) player randomNumber levelOver' hits
+    monsters' <- delay (map initialMonster positions) monsters
     score <- transfer currentScore accumulateScore hits
-    levelOver <- memo (levelEnds <$> player <*> monster)
+    levelOver <- memo (levelEnds <$> player <*> monsters)
     levelOver' <- delay Nothing levelOver
     animation <- transfer Nothing (endAnimation level) levelOver
     viewport <- transfer initialViewport viewPortMove player
@@ -158,18 +164,18 @@ playLevel windowSize directionKey shootKey randomGenerator level@(Level _) curre
                               then (:[]) <$> bolt (dirFrom shot) boltRange (position currentPlayer)
                               else return []
     newBolts <- generator (mkShot <$> shoot <*> player)
-    bolts <- collection newBolts (boltIsAlive worldDimensions <$> monster)
+    bolts <- collection newBolts (boltIsAlive worldDimensions <$> monsters)
     bolts' <- delay [] bolts
 
     -- sound signals
-    statusChange <- transfer3 Nothing monitorStatusChange monster monster' levelOver
+    statusChange <- transfer3 Nothing safeOrDanger monsters monsters' levelOver
     playerScreams <- Elerea.until ((== (Just Lose)) <$> levelOver)
     monsterScreams <- Elerea.until ((== (Just Win)) <$> levelOver)
 
 
-    let monsterIsHunting = stillHunting <$> monster <*> levelOver
+    let monsterIsHunting = (foldr (||) False) <$> (fmap <$> (stillHunting <$> levelOver) <*> monsters)
         renderState = RenderState <$> player
-                                  <*> monster
+                                  <*> monsters
                                   <*> levelOver
                                   <*> viewport
                                   <*> bolts
@@ -182,16 +188,17 @@ playLevel windowSize directionKey shootKey randomGenerator level@(Level _) curre
                                  <*> monsterIsHunting
                                  <*> monsterScreams
                                  <*> (hasAny <$> shoot)
-                                 <*> (boltHit <$> monster <*> bolts)
+                                 <*> (boltHit <$> monsters <*> bolts)
 
     return (GameState <$> renderState <*> soundState, animationEnd <$> animation)
-    where playerEaten player monster
-              | distance player monster < (playerSize^2  :: Float) = Just Lose
-              | otherwise                                          = Nothing
-          monsterDead (Monster _ _ health)
-              | health == 0 = Just Win
-              | otherwise   = Nothing
-          levelEnds player monster = maybe (monsterDead monster) Just (playerEaten player monster)
+    where playerEaten player monsters
+              | any (\monster -> distance player monster < (playerSize^2  :: Float)) monsters = Just Lose
+              | otherwise                                                                     = Nothing
+          monstersDead monsters
+              | all monsterDead monsters = Just Win
+              | otherwise                = Nothing
+          monsterDead (Monster _ _ health) = health == 0
+          levelEnds player monsters = maybe (monstersDead monsters) Just (playerEaten player monsters)
           nextRandom (_, g) = random g
 
 -- FRP
@@ -231,8 +238,8 @@ animationEnd _ = False
 moveBolt :: Bolt -> Bolt
 moveBolt (Bolt (xpos, ypos) direction range alreadyHit) = Bolt (boltSpeed `times` (stepInDirection direction) `plus` (xpos, ypos)) direction (range - 1) alreadyHit
 
-boltIsAlive :: (Float, Float) -> Monster -> Bolt -> Bool
-boltIsAlive worldDimensions monster bolt = (not (hasHit monster bolt)) && boltStillGoing worldDimensions bolt
+boltIsAlive :: (Float, Float) -> [Monster] -> Bolt -> Bool
+boltIsAlive worldDimensions monsters bolt = (not (any (\monster -> hasHit monster bolt) monsters)) && boltStillGoing worldDimensions bolt
 
 -- let it come closer so that the hit can be registered before removing the bolt
 hasHit :: Monster -> Bolt -> Bool
@@ -256,11 +263,11 @@ boltStillGoing :: (Float, Float) -> Bolt -> Bool
 boltStillGoing (width, height) (Bolt (x, y) _ range alreadyHit) =
     (not alreadyHit) && (range > 0) && x < width/2 && y < height/2
 
-stillHunting :: Monster -> Maybe Ending -> Bool
-stillHunting _                         (Just _)  = False
-stillHunting (Monster _ (Hunting _) 0) _     = False
-stillHunting (Monster _ (Hunting _) _) Nothing = True
-stillHunting _                         Nothing = False
+stillHunting :: Maybe Ending -> Monster -> Bool
+stillHunting (Just _) _                         = False
+stillHunting _        (Monster _ (Hunting _) 0) = False
+stillHunting Nothing  (Monster _ (Hunting _) _) = True
+stillHunting Nothing  _                         = False
 
 viewPortMove :: Player -> ViewPort -> ViewPort
 viewPortMove (Player (x,y) _) (ViewPort { viewPortTranslate = _, viewPortRotate = rotation, viewPortScale = scaled }) =
@@ -303,37 +310,39 @@ hitOrMiss :: Float -> Monster -> Monster
 hitOrMiss hits (Monster (xmon, ymon) status health) =
     Monster (xmon, ymon) status (health - hits)
 
-monsterHits :: Monster -> [Bolt] -> Float
-monsterHits monster bolts = fromIntegral $ length
+monsterHits :: [Bolt] -> Monster -> Float
+monsterHits bolts monster = fromIntegral $ length
                                          $ filter (<= (monsterSize/2)^2) (boltDistances monster (filter notCounted bolts))
                                          where notCounted (Bolt _ _ _ alreadyHit) = not alreadyHit
 
-accumulateScore :: Float -> Float -> Float
-accumulateScore hits score = score + hits
+accumulateScore :: [Float] -> Float -> Float
+accumulateScore hits score = score + sum hits
 
 boltDistances :: Monster -> [Bolt] -> [Float]
 boltDistances (Monster (xmon, ymon) _ _) bolts =
     map (\(Bolt (xbolt, ybolt) _ _ _) -> dist (xmon, ymon) (xbolt, ybolt)) bolts
 
-boltHit :: Monster -> [Bolt] -> Bool
-boltHit monster bolts = any (== True) $ map (< (monsterSize/2)^2) (boltDistances monster bolts)
+boltHit :: [Monster] -> [Bolt] -> Bool
+boltHit monsters bolts = any (== True) $ concat $ map (\monster -> map (< (monsterSize/2)^2) (boltDistances monster bolts)) monsters
+
+monsterWanderings :: RandomGen t => (Float, Float) -> Player -> (Direction, t) -> Maybe Ending -> [Float] -> [Monster] -> [Monster]
+monsterWanderings dim p gen ending hits monsters = map (wanderOrHunt dim p gen ending) (zip hits monsters)
 
 wanderOrHunt :: System.Random.RandomGen t =>
                 (Float, Float)
                 -> Player
                 -> (Direction, t)
                 -> Maybe Ending
-                -> Float
-                -> Monster
+                -> (Float, Monster)
                 -> Monster
 -- game ended
-wanderOrHunt _ _ _ (Just _) _ monster = monster
+wanderOrHunt _ _ _ (Just _) (_, monster) = monster
 
 -- no health left: dead
-wanderOrHunt _ _ _ _    _ monster@(Monster _ _ 0) = monster
+wanderOrHunt _ _ _ _        (_, monster@(Monster _ _ 0)) = monster
 
 -- normal game
-wanderOrHunt dimensions player (r, _) Nothing hits monster = do
+wanderOrHunt dimensions player (r, _) Nothing (hits, monster) = do
     let monsterHit = hitOrMiss hits monster
     if close player monsterHit
      then hunt player monsterHit
@@ -380,12 +389,20 @@ continueDirection direction False = direction
 stepInCurrentDirection :: Direction -> (Float, Float) -> Float -> Pos
 stepInCurrentDirection direction (xpos, ypos) speed = speed `times` (stepInDirection direction) `plus` (xpos, ypos)
 
-monitorStatusChange :: Monster -> Monster -> Maybe Ending -> Maybe StatusChange -> Maybe StatusChange
-monitorStatusChange (Monster _ _ num) (Monster _ _ 0) Nothing _ = if num > 0 then Just Safe else Nothing
-monitorStatusChange _ _ (Just _) _ = Just Safe
-monitorStatusChange (Monster _ (Hunting _) _) (Monster _ (Wander _ _) _) _ _ = Just Danger
-monitorStatusChange (Monster _ (Wander _ _) _) (Monster _ (Hunting _) _) _ _ = Just Safe
-monitorStatusChange _ _ _ _ = Nothing
+safeOrDanger :: [Monster] -> [Monster] -> Maybe Ending -> Maybe StatusChange -> Maybe StatusChange
+safeOrDanger _ _ (Just _) _ = Just Safe
+safeOrDanger monsters monsters' _ currentStatus = do
+  let statusChanges = mapMaybe monitorStatusChange (zip monsters monsters')
+  foldl' dominatingChanges Nothing statusChanges
+  where dominatingChanges _             Danger = Just Danger
+        dominatingChanges (Just Danger) Safe = Just Danger
+        dominatingChanges _             Safe = Just Safe
+
+monitorStatusChange :: (Monster, Monster) -> Maybe StatusChange
+monitorStatusChange ((Monster _ _ num), (Monster _ _ 0)) = if num > 0 then Just Safe else Nothing
+monitorStatusChange ((Monster _ (Hunting _) _), (Monster _ (Wander _ _) _)) = Just Danger
+monitorStatusChange ((Monster _ (Wander _ _) _), (Monster _ (Hunting _) _)) = Just Safe
+monitorStatusChange _ = Nothing
 
 -- output functions
 outputFunction window glossState textures sounds (GameState renderState soundState) =

@@ -47,7 +47,7 @@ instance Random Direction where
   random g = randomR (minBound, maxBound) g
 
 data RenderState = RenderState { renderState_player :: Player
-                               , renderState_monster :: Monster
+                               , renderState_monster :: [Monster]
                                , renderState_ending :: Maybe Ending
                                , renderState_viewport :: ViewPort
                                , renderState_bolts :: [Bolt]

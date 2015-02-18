@@ -71,7 +71,7 @@ renderFrame window
             textures
             (worldWidth, worldHeight)
             (RenderState (Player _ playerDir)
-                         monster
+                         monsters
                          gameOver
                          viewport
                          bolts
@@ -83,9 +83,9 @@ renderFrame window
      Pictures $ animation mbAnimation dimensions $ gameOngoing gameOver lives (texts textures) $ gameStats lives score dimensions $
                              [ uncurry translate (viewPortTranslate viewport) $ tiledBackground (background textures) worldWidth worldHeight
                              , renderPlayer playerDir (player textures)
-                             , uncurry translate (viewPortTranslate viewport) $ renderMonster monster (monsterWalking textures) (monsterHunting textures)
-                             , uncurry translate (viewPortTranslate viewport) $ renderHealthBar monster ]
-                              ++ (map (uncurry translate (viewPortTranslate viewport) . (renderBolt (boltTextures textures))) bolts)
+                             , Pictures $ map (uncurry translate (viewPortTranslate viewport) . (renderBolt (boltTextures textures))) bolts
+                             , uncurry translate (viewPortTranslate viewport) $ Pictures $ map (renderMonster (monsterWalking textures) (monsterHunting textures)) monsters
+                             , uncurry translate (viewPortTranslate viewport) $ Pictures $ map renderHealthBar monsters ]
    swapBuffers window
 
 renderFrame window glossState _ _ (StartRenderState dimensions) = do
@@ -123,12 +123,12 @@ renderPlayer (Just (PlayerMovement dir Three)) textureSet = neutral $ playerDire
 renderPlayer (Just (PlayerMovement dir Four)) textureSet = walkRight $ playerDirectionTexture dir textureSet
 renderPlayer Nothing textureSet = neutral $ fronts textureSet
 
-renderMonster :: Monster -> TextureSet -> TextureSet -> Picture
-renderMonster (Monster (xpos, ypos) (Hunting dir) _) _ textureSet = translate xpos ypos $ directionTexture dir textureSet
-renderMonster (Monster (xpos, ypos) (Wander WalkUp _) _) textureSet _ = translate xpos ypos $ back textureSet
-renderMonster (Monster (xpos, ypos) (Wander WalkDown _) _) textureSet _ = translate xpos ypos $ front textureSet
-renderMonster (Monster (xpos, ypos) (Wander WalkLeft n) _) textureSet _ = translate xpos ypos $ rotate (16* fromIntegral n) $ left textureSet
-renderMonster (Monster (xpos, ypos) (Wander WalkRight n) _) textureSet _ = translate xpos ypos $ rotate ((-16)* fromIntegral n) $ right textureSet
+renderMonster :: TextureSet -> TextureSet -> Monster -> Picture
+renderMonster _ textureSet (Monster (xpos, ypos) (Hunting dir) _) = translate xpos ypos $ directionTexture dir textureSet
+renderMonster textureSet _ (Monster (xpos, ypos) (Wander WalkUp _) _) = translate xpos ypos $ back textureSet
+renderMonster textureSet _ (Monster (xpos, ypos) (Wander WalkDown _) _) = translate xpos ypos $ front textureSet
+renderMonster textureSet _ (Monster (xpos, ypos) (Wander WalkLeft n) _) = translate xpos ypos $ rotate (16* fromIntegral n) $ left textureSet
+renderMonster textureSet _ (Monster (xpos, ypos) (Wander WalkRight n) _) = translate xpos ypos $ rotate ((-16)* fromIntegral n) $ right textureSet
 
 renderBolt :: TextureSet -> Bolt -> Picture
 renderBolt textureSet (Bolt (xpos, ypos) dir _ _) = translate xpos ypos $ directionTexture dir textureSet
