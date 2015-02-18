@@ -192,6 +192,7 @@ gameStats lives score (w, h) pics = do
   let fWidth = fromIntegral w
       fHeight = fromIntegral h
   pics ++ [ Color black $ translate (fWidth/2 - 80) (fHeight/2 - 50) $ Scale 0.2 0.2 $ Text $ show $ round score
+          , Color (makeColor 1 1 1 0.5) $ translate ((-fWidth/2) + 80) (fHeight/2 - 40) $ rectangleSolid 250 40
           , Color black $ translate ((-fWidth)/2 + 20) (fHeight/2 - 50) $ Scale 0.2 0.2 $ Text "lives: "]
        ++ map (\i -> Color red $ translate ((-fWidth)/2 + 90 + 40*i) (fHeight/2 - 40) $ circleSolid 10) [0..(fromIntegral (lives - 1))]
 
