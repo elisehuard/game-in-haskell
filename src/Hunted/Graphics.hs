@@ -41,8 +41,8 @@ loadTextures = do
                                     <*> loadBMP "images/monster-hunting-right.bmp"
                                     <*> loadBMP "images/monster-hunting-left.bmp"
                                     <*> loadBMP "images/monster-hunting-right.bmp"
-    boltSet <- TextureSet <$> loadBMP "images/bolt-up.bmp"
-                          <*> loadBMP "images/bolt-down.bmp"
+    boltSet <- TextureSet <$> loadBMP "images/bolt-down.bmp"
+                          <*> loadBMP "images/bolt-up.bmp"
                           <*> loadBMP "images/bolt-left.bmp"
                           <*> loadBMP "images/bolt-right.bmp"
     backgroundTexture <- loadBMP "images/background-tile.bmp"
@@ -134,8 +134,8 @@ renderBolt :: TextureSet -> Bolt -> Picture
 renderBolt textureSet (Bolt (xpos, ypos) dir _ _) = translate xpos ypos $ directionTexture dir textureSet
 
 directionTexture :: Direction -> TextureSet -> Picture
-directionTexture WalkUp = front
-directionTexture WalkDown = back
+directionTexture WalkUp = back
+directionTexture WalkDown = front
 directionTexture WalkLeft = left
 directionTexture WalkRight = right
 
