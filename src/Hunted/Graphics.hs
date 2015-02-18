@@ -17,10 +17,11 @@ import qualified Data.Map.Strict as Map
 data TextureSet = TextureSet { front :: Picture, back :: Picture, left :: Picture, right :: Picture }
                 | PlayerTextureSet { fronts :: WalkingTexture, backs :: WalkingTexture, lefts :: WalkingTexture, rights :: WalkingTexture }
 
-data WalkingTexture = WalkingTexture { neutral :: Picture, walkLeft :: Picture, walkRight :: Picture }
+data WalkingTexture = WalkingTexture { neutral :: ShootingTexture, walkLeft :: ShootingTexture, walkRight :: ShootingTexture }
+data ShootingTexture = ShootingTexture { shootDown :: Picture, shootUp :: Picture, shootLeft :: Picture, shootRight :: Picture }
 
 data Textures = Textures { background :: Picture
-                         , player :: TextureSet
+                         , playerTextures :: TextureSet
                          , monsterWalking :: TextureSet
                          , monsterHunting :: TextureSet
                          , texts :: Map.Map String Picture
@@ -28,10 +29,10 @@ data Textures = Textures { background :: Picture
 
 loadTextures :: IO Textures
 loadTextures = do
-    playerTextureSet <- PlayerTextureSet <$> loadAnims "images/knight-front.bmp" "images/knight-front-1.bmp" "images/knight-front-3.bmp"
-                                         <*> loadAnims "images/knight-back.bmp" "images/knight-back-1.bmp" "images/knight-back-3.bmp"
-                                         <*> loadAnims "images/knight-left.bmp" "images/knight-left-1.bmp" "images/knight-left-3.bmp"
-                                         <*> loadAnims "images/knight-right.bmp" "images/knight-right-1.bmp" "images/knight-right-3.bmp"
+    playerTextureSet <- PlayerTextureSet <$> loadWalkingTexture "front"
+                                         <*> loadWalkingTexture "back"
+                                         <*> loadWalkingTexture "left"
+                                         <*> loadWalkingTexture "right"
     monsterWalkingSet <- TextureSet <$> loadBMP "images/monster-walking-front.bmp"
                                     <*> loadBMP "images/monster-walking-back.bmp"
                                     <*> loadBMP "images/monster-walking-left.bmp"
@@ -48,14 +49,20 @@ loadTextures = do
     backgroundTexture <- loadBMP "images/background-tile.bmp"
     gameOverText <- loadBMP "images/game-over.bmp"
     return Textures { background = backgroundTexture
-                    , player = playerTextureSet
+                    , playerTextures = playerTextureSet
                     , monsterWalking = monsterWalkingSet
                     , monsterHunting = monsterHuntingSet
                     , texts = Map.singleton "game-over" gameOverText
                     , boltTextures = boltSet }
 
-loadAnims :: String -> String -> String -> IO WalkingTexture
-loadAnims path1 path2 path3 = WalkingTexture <$> loadBMP path1 <*> loadBMP path2 <*> loadBMP path3
+loadWalkingTexture :: String -> IO WalkingTexture
+loadWalkingTexture facing = do
+  let pathFn facing shooting animationphase = "images/knight-" ++ facing ++ animationphase ++ "-crossbow-" ++ shooting ++ ".bmp"
+      paths = map (pathFn facing) ["front", "back", "left", "right"]
+      shootingTexture [a,b,c,d] = ShootingTexture a b c d
+  WalkingTexture <$> (shootingTexture <$> (sequence $ map (\p -> loadBMP $ p "") paths))
+                 <*> (shootingTexture <$> (sequence $ map (\p -> loadBMP $ p "-1") paths))
+                 <*> (shootingTexture <$> (sequence $ map (\p -> loadBMP $ p "-3") paths))
 
 {- again, need to export gloss internal state for this signature, pull request required
 renderFrame :: Window
@@ -70,7 +77,7 @@ renderFrame window
             glossState
             textures
             (worldWidth, worldHeight)
-            (RenderState (Player _ playerDir)
+            (RenderState player
                          monsters
                          gameOver
                          viewport
@@ -82,8 +89,8 @@ renderFrame window
    displayPicture dimensions black glossState (viewPortScale viewport) $
      Pictures $ animation mbAnimation dimensions $ gameOngoing gameOver lives (texts textures) $ gameStats lives score dimensions $
                              [ uncurry translate (viewPortTranslate viewport) $ tiledBackground (background textures) worldWidth worldHeight
-                             , renderPlayer playerDir (player textures)
                              , Pictures $ map (uncurry translate (viewPortTranslate viewport) . (renderBolt (boltTextures textures))) bolts
+                             , renderPlayer player (playerTextures textures)
                              , uncurry translate (viewPortTranslate viewport) $ Pictures $ map (renderMonster (monsterWalking textures) (monsterHunting textures)) monsters
                              , uncurry translate (viewPortTranslate viewport) $ Pictures $ map renderHealthBar monsters ]
    swapBuffers window
@@ -116,12 +123,13 @@ translateMatrix w h = concat $ map (zip xTiles)
                             higherbound size = size/2 - tileSize/2
                             lowerbound size = -(higherbound size)
 
-renderPlayer :: Maybe PlayerMovement -> TextureSet -> Picture
-renderPlayer (Just (PlayerMovement dir One)) textureSet = neutral $ playerDirectionTexture dir textureSet
-renderPlayer (Just (PlayerMovement dir Two)) textureSet = walkLeft $ playerDirectionTexture dir textureSet
-renderPlayer (Just (PlayerMovement dir Three)) textureSet = neutral $ playerDirectionTexture dir textureSet
-renderPlayer (Just (PlayerMovement dir Four)) textureSet = walkRight $ playerDirectionTexture dir textureSet
-renderPlayer Nothing textureSet = neutral $ fronts textureSet
+-- put crossbow behind player when he's facing up or profile, otherwise in front
+renderPlayer :: Player -> TextureSet -> Picture
+renderPlayer player@(Player _ (Just (PlayerMovement dir One)) shootDir) textureSet = shootDirectionTexture (Just dir) shootDir $ neutral $ playerDirectionTexture dir textureSet
+renderPlayer player@(Player _ (Just (PlayerMovement dir Two)) shootDir) textureSet = shootDirectionTexture (Just dir) shootDir $ walkLeft $ playerDirectionTexture dir textureSet
+renderPlayer player@(Player _ (Just (PlayerMovement dir Three)) shootDir) textureSet = shootDirectionTexture (Just dir) shootDir $ neutral $ playerDirectionTexture dir textureSet
+renderPlayer player@(Player _ (Just (PlayerMovement dir Four)) shootDir) textureSet = shootDirectionTexture (Just dir) shootDir $ walkRight $ playerDirectionTexture dir textureSet
+renderPlayer player@(Player _ Nothing shootDir) textureSet = shootDirectionTexture Nothing shootDir $ neutral $ fronts textureSet
 
 renderMonster :: TextureSet -> TextureSet -> Monster -> Picture
 renderMonster _ textureSet (Monster (xpos, ypos) (Hunting dir) _) = translate xpos ypos $ directionTexture dir textureSet
@@ -140,10 +148,19 @@ directionTexture WalkLeft = left
 directionTexture WalkRight = right
 
 playerDirectionTexture :: Direction -> TextureSet -> WalkingTexture
-playerDirectionTexture WalkUp = fronts
-playerDirectionTexture WalkDown = backs
+playerDirectionTexture WalkUp = backs
+playerDirectionTexture WalkDown = fronts
 playerDirectionTexture WalkLeft = lefts
 playerDirectionTexture WalkRight = rights
+
+shootDirectionTexture :: Maybe Direction -> Maybe Direction -> ShootingTexture -> Picture
+shootDirectionTexture _ (Just WalkDown)  = shootDown
+shootDirectionTexture _ (Just WalkUp)    = shootUp
+shootDirectionTexture _ (Just WalkLeft)  = shootLeft
+shootDirectionTexture _ (Just WalkRight) = shootRight
+shootDirectionTexture Nothing Nothing = shootDown
+shootDirectionTexture facing  Nothing = shootDirectionTexture Nothing facing
+
 -- [x x x x x]
 -- [0 0]
 -- 1 centered around xmon, size bar

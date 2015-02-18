@@ -17,7 +17,7 @@ import Graphics.Gloss.Data.ViewPort
 import System.Random (random, RandomGen(..), randomRs)
 
 initialPlayer :: Player
-initialPlayer = Player (0, 0) Nothing
+initialPlayer = Player (0, 0) Nothing Nothing
 
 initialMonster :: (Float, Float) -> Monster
 initialMonster pos = Monster pos (Wander WalkUp wanderDist) 4
@@ -130,6 +130,7 @@ switcher levelGen = mdo
         store Nothing x = x
         toMaybe bool x = if bool then Just <$> x else pure Nothing
 
+{-
 playLevel :: RandomGen t =>
              Signal (Int, Int)
           -> Signal (Bool, Bool, Bool, Bool)
@@ -144,10 +145,10 @@ playLevel windowSize directionKey shootKey randomGenerator level@(Level n) curre
 
     -- render signals
     let worldDimensions = (worldWidth, worldHeight)
-    player <- transfer2 initialPlayer (\p dead dK -> movePlayer p dK dead 10 worldDimensions) directionKey levelOver'
         randomWidths = take n $ randomRs (round ((-worldWidth)/2), round (worldWidth/2)) randomGenerator :: [Int]
         randomHeights = take n $ randomRs (round ((-worldWidth)/2), round (worldWidth/2)) randomGenerator :: [Int]
         positions = zip (map fromIntegral randomWidths) (map fromIntegral randomHeights)
+    player <- transfer3 initialPlayer (movePlayer 10 worldDimensions) directionKey levelOver' shootKey
     randomNumber <- stateful (undefined, randomGenerator) nextRandom
     hits <- memo (fmap <$> (monsterHits <$> bolts') <*> monsters')
     monsters <- transfer4 (fmap initialMonster positions) (monsterWanderings worldDimensions) player randomNumber levelOver' hits
@@ -270,14 +271,20 @@ stillHunting Nothing  (Monster _ (Hunting _) _) = True
 stillHunting Nothing  _                         = False
 
 viewPortMove :: Player -> ViewPort -> ViewPort
-viewPortMove (Player (x,y) _) (ViewPort { viewPortTranslate = _, viewPortRotate = rotation, viewPortScale = scaled }) =
+viewPortMove (Player (x,y) _ _) (ViewPort { viewPortTranslate = _, viewPortRotate = rotation, viewPortScale = scaled }) =
         ViewPort { viewPortTranslate = ((-x), (-y)), viewPortRotate = rotation, viewPortScale = scaled }
 
-movePlayer :: (Bool, Bool, Bool, Bool) -> Player -> Maybe Ending -> Float -> (Float, Float) -> Player
-movePlayer _ player (Just _) _ _ = player
-movePlayer direction player Nothing increment dimensions
-         | outsideOfLimits dimensions (position (move direction player increment)) playerSize = player
-         | otherwise = move direction player increment
+movePlayer :: Float
+           -> (Float, Float)
+           -> (Bool, Bool, Bool, Bool)
+           -> Maybe Ending
+           -> (Bool, Bool, Bool, Bool)
+           -> Player
+           -> Player
+movePlayer _ _ _ (Just _) _ player = player
+movePlayer increment dimensions direction Nothing shootDirection player
+         | outsideOfLimits dimensions (position (move direction shootDirection player increment)) playerSize = player
+         | otherwise = move direction shootDirection player increment
 
 outsideOfLimits :: (Float, Float) -> (Float, Float) -> Float -> Bool
 outsideOfLimits (width, height) (xmon, ymon) size = xmon > width/2 - size/2 ||
@@ -285,12 +292,19 @@ outsideOfLimits (width, height) (xmon, ymon) size = xmon > width/2 - size/2 ||
                                                     ymon > height/2 - size/2 ||
                                                     ymon < (-(height)/2 + size/2)
 
-move :: (Bool, Bool, Bool, Bool) -> Player -> Float -> Player
-move (False, False, False, False) (Player (xpos, ypos) _) _ = Player (xpos, ypos) Nothing
-move keys (Player (xpos, ypos) (Just (PlayerMovement direction n))) increment
-        | dirFrom keys == direction = Player ((xpos, ypos) `plus` increment `times` stepInDirection direction) (Just $ PlayerMovement direction (circular n))
-        | otherwise                 = Player ((xpos, ypos) `plus` increment `times` stepInDirection (dirFrom keys)) (Just $ PlayerMovement (dirFrom keys) One)
-move keys (Player (xpos, ypos) Nothing) increment = Player ((xpos, ypos) `plus` increment `times` stepInDirection (dirFrom keys)) (Just $ PlayerMovement (dirFrom keys) One)
+move :: (Bool, Bool, Bool, Bool) -> (Bool, Bool, Bool, Bool) -> Player -> Float -> Player
+move (False, False, False, False) sK (Player (xpos, ypos) _ _) _ = Player (xpos, ypos) Nothing (crossbowPointed sK)
+move keys sK (Player (xpos, ypos) (Just (PlayerMovement direction n)) _) increment
+        | dirFrom keys == direction = Player ((xpos, ypos) `plus` increment `times` stepInDirection direction) (Just $ PlayerMovement direction (circular n)) (crossbowPointed sK)
+        | otherwise                 = Player ((xpos, ypos) `plus` increment `times` stepInDirection (dirFrom keys)) (Just $ PlayerMovement (dirFrom keys) One) (crossbowPointed sK)
+move keys sK (Player (xpos, ypos) Nothing _) increment = Player ((xpos, ypos) `plus` increment `times` stepInDirection (dirFrom keys)) (Just $ PlayerMovement (dirFrom keys) One) (crossbowPointed sK)
+
+crossbowPointed (a,d,w,s)
+    | w = Just WalkUp
+    | s = Just WalkDown
+    | a = Just WalkLeft
+    | d = Just WalkRight
+    | otherwise = Nothing
 
 dirFrom :: (Bool, Bool, Bool, Bool) -> Direction
 dirFrom (l, r, u, d)
@@ -352,12 +366,12 @@ close :: Player -> Monster -> Bool
 close player monster = distance player monster < huntingDist^2
 
 distance :: Player -> Monster -> Float
-distance (Player (xpos, ypos) _) (Monster (xmon, ymon) _ _) = dist (xpos, ypos) (xmon, ymon)
+distance (Player (xpos, ypos) _ _) (Monster (xmon, ymon) _ _) = dist (xpos, ypos) (xmon, ymon)
 
 -- if player is upper left quadrant, diagonal left
 -- means xpos > xmon and ypos > ymon
 hunt :: Player -> Monster -> Monster
-hunt (Player (xpos, ypos) _) (Monster (xmon, ymon) _ health) = Monster ((xmon + (signum (xpos - xmon))*monsterSpeed), (ymon + (signum (ypos - ymon))*monsterSpeed)) (Hunting $ huntingDirection (signum (xpos - xmon)) (signum (ypos - ymon))) health
+hunt (Player (xpos, ypos) _ _) (Monster (xmon, ymon) _ health) = Monster ((xmon + (signum (xpos - xmon))*monsterSpeed), (ymon + (signum (ypos - ymon))*monsterSpeed)) (Hunting $ huntingDirection (signum (xpos - xmon)) (signum (ypos - ymon))) health
 
 huntingDirection :: Float -> Float -> Direction
 huntingDirection (-1) (-1) = WalkLeft

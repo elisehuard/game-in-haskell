@@ -22,7 +22,7 @@ infixl 6 `plus`
 
 type Health = Float
 
-data Player = Player { position :: Pos, movement :: Maybe PlayerMovement }
+data Player = Player { position :: Pos, movement :: Maybe PlayerMovement, shootDirection :: Maybe Direction }
                deriving Show
 data PlayerMovement = PlayerMovement { dir :: Direction, step :: WalkStage }
                deriving Show
