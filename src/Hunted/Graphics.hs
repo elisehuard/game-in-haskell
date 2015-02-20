@@ -24,6 +24,7 @@ data Textures = Textures { background :: Picture
                          , playerTextures :: TextureSet
                          , monsterWalking :: TextureSet
                          , monsterHunting :: TextureSet
+                         , deadMonster :: Picture
                          , texts :: Map.Map String Picture
                          , boltTextures :: TextureSet }
 
@@ -42,6 +43,7 @@ loadTextures = do
                                     <*> loadBMP "images/monster-hunting-right.bmp"
                                     <*> loadBMP "images/monster-hunting-left.bmp"
                                     <*> loadBMP "images/monster-hunting-right.bmp"
+    deadMonsterTexture <- loadBMP "images/dead-monster.bmp"
     boltSet <- TextureSet <$> loadBMP "images/bolt-down.bmp"
                           <*> loadBMP "images/bolt-up.bmp"
                           <*> loadBMP "images/bolt-left.bmp"
@@ -52,6 +54,7 @@ loadTextures = do
                     , playerTextures = playerTextureSet
                     , monsterWalking = monsterWalkingSet
                     , monsterHunting = monsterHuntingSet
+                    , deadMonster = deadMonsterTexture
                     , texts = Map.singleton "game-over" gameOverText
                     , boltTextures = boltSet }
 
@@ -91,7 +94,7 @@ renderFrame window
                              [ uncurry translate (viewPortTranslate viewport) $ tiledBackground (background textures) worldWidth worldHeight
                              , Pictures $ map (uncurry translate (viewPortTranslate viewport) . (renderBolt (boltTextures textures))) bolts
                              , renderPlayer player (playerTextures textures)
-                             , uncurry translate (viewPortTranslate viewport) $ Pictures $ map (renderMonster (monsterWalking textures) (monsterHunting textures)) monsters
+                             , uncurry translate (viewPortTranslate viewport) $ Pictures $ map (renderMonster (monsterWalking textures) (monsterHunting textures) (deadMonster textures)) monsters
                              , uncurry translate (viewPortTranslate viewport) $ Pictures $ map renderHealthBar monsters ]
    swapBuffers window
 
@@ -131,12 +134,13 @@ renderPlayer player@(Player _ (Just (PlayerMovement dir Three)) shootDir) textur
 renderPlayer player@(Player _ (Just (PlayerMovement dir Four)) shootDir) textureSet = shootDirectionTexture (Just dir) shootDir $ walkRight $ playerDirectionTexture dir textureSet
 renderPlayer player@(Player _ Nothing shootDir) textureSet = shootDirectionTexture Nothing shootDir $ neutral $ fronts textureSet
 
-renderMonster :: TextureSet -> TextureSet -> Monster -> Picture
-renderMonster _ textureSet (Monster (xpos, ypos) (Hunting dir) _) = translate xpos ypos $ directionTexture dir textureSet
-renderMonster textureSet _ (Monster (xpos, ypos) (Wander WalkUp _) _) = translate xpos ypos $ back textureSet
-renderMonster textureSet _ (Monster (xpos, ypos) (Wander WalkDown _) _) = translate xpos ypos $ front textureSet
-renderMonster textureSet _ (Monster (xpos, ypos) (Wander WalkLeft n) _) = translate xpos ypos $ rotate (16* fromIntegral n) $ left textureSet
-renderMonster textureSet _ (Monster (xpos, ypos) (Wander WalkRight n) _) = translate xpos ypos $ rotate ((-16)* fromIntegral n) $ right textureSet
+renderMonster :: TextureSet -> TextureSet -> Picture -> Monster -> Picture
+renderMonster _ _          dead (Monster (xpos, ypos) _ 0) = translate xpos ypos $ dead
+renderMonster _ textureSet _    (Monster (xpos, ypos) (Hunting dir) _) = translate xpos ypos $ directionTexture dir textureSet
+renderMonster textureSet _ _    (Monster (xpos, ypos) (Wander WalkUp _) _) = translate xpos ypos $ back textureSet
+renderMonster textureSet _ _    (Monster (xpos, ypos) (Wander WalkDown _) _) = translate xpos ypos $ front textureSet
+renderMonster textureSet _ _    (Monster (xpos, ypos) (Wander WalkLeft n) _) = translate xpos ypos $ rotate (16* fromIntegral n) $ left textureSet
+renderMonster textureSet _ _    (Monster (xpos, ypos) (Wander WalkRight n) _) = translate xpos ypos $ rotate ((-16)* fromIntegral n) $ right textureSet
 
 renderBolt :: TextureSet -> Bolt -> Picture
 renderBolt textureSet (Bolt (xpos, ypos) dir _ _) = translate xpos ypos $ directionTexture dir textureSet
@@ -175,6 +179,7 @@ healthBarWidth :: Float
 healthBarWidth = 5
 
 renderHealthBar :: Monster -> Picture
+renderHealthBar (Monster _            _ 0)      = Pictures []
 renderHealthBar (Monster (xmon, ymon) _ health) = Pictures [ translate xmon (ymon + 30) $ Color black $ rectangleSolid healthBarLength healthBarWidth
                                                            , translate (xmon - healthBarLength/2 + health*healthBarLength/(numberOfLives*2)) (ymon + 30) $ Color red $ rectangleSolid (health*healthBarLength/numberOfLives) healthBarWidth ]
 
