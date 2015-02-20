@@ -53,7 +53,7 @@ boltRange :: Range
 boltRange = 20
 
 boltSpeed :: Float
-boltSpeed = 10
+boltSpeed = 20
 
 
 initialLevel :: LevelStatus
@@ -145,14 +145,14 @@ playLevel windowSize directionKey shootKey randomGenerator level@(Level n) curre
 
     -- render signals
     let worldDimensions = (worldWidth, worldHeight)
-        randomWidths = take n $ randomRs (round ((-worldWidth)/2), round (worldWidth/2)) randomGenerator :: [Int]
-        randomHeights = take n $ randomRs (round ((-worldWidth)/2), round (worldWidth/2)) randomGenerator :: [Int]
-        positions = zip (map fromIntegral randomWidths) (map fromIntegral randomHeights)
+        randomWidths = take n $ randomRs (round ((-worldWidth)/2 + monsterSize/2), round ((worldWidth/2) - monsterSize/2)) randomGenerator :: [Int]
+        randomHeights = take n $ randomRs (round ((-worldWidth)/2 + monsterSize/2), round ((worldWidth/2) - monsterSize/2)) randomGenerator :: [Int]
+        monsterPositions = zip (map fromIntegral randomWidths) (map fromIntegral randomHeights)
     player <- transfer3 initialPlayer (movePlayer 10 worldDimensions) directionKey levelOver' shootKey
     randomNumber <- stateful (undefined, randomGenerator) nextRandom
     hits <- memo (fmap <$> (monsterHits <$> bolts') <*> monsters')
-    monsters <- transfer4 (fmap initialMonster positions) (monsterWanderings worldDimensions) player randomNumber levelOver' hits
-    monsters' <- delay (map initialMonster positions) monsters
+    monsters <- transfer4 (fmap initialMonster monsterPositions) (monsterWanderings worldDimensions) player randomNumber levelOver' hits
+    monsters' <- delay (map initialMonster monsterPositions) monsters
     score <- transfer currentScore accumulateScore hits
     levelOver <- memo (levelEnds <$> player <*> monsters)
     levelOver' <- delay Nothing levelOver
