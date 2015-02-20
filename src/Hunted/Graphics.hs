@@ -60,9 +60,10 @@ loadTextures = do
 
 loadWalkingTexture :: String -> IO WalkingTexture
 loadWalkingTexture facing = do
-  let pathFn facing shooting animationphase = "images/knight-" ++ facing ++ animationphase ++ "-crossbow-" ++ shooting ++ ".bmp"
+  let pathFn faces shooting animationphase = "images/knight-" ++ faces ++ animationphase ++ "-crossbow-" ++ shooting ++ ".bmp"
       paths = map (pathFn facing) ["front", "back", "left", "right"]
       shootingTexture [a,b,c,d] = ShootingTexture a b c d
+      shootingTexture _         = error "no other arrays allowed"
   WalkingTexture <$> (shootingTexture <$> (sequence $ map (\p -> loadBMP $ p "") paths))
                  <*> (shootingTexture <$> (sequence $ map (\p -> loadBMP $ p "-1") paths))
                  <*> (shootingTexture <$> (sequence $ map (\p -> loadBMP $ p "-3") paths))
@@ -128,22 +129,22 @@ translateMatrix w h = concat $ map (zip xTiles)
 
 -- put crossbow behind player when he's facing up or profile, otherwise in front
 renderPlayer :: Player -> TextureSet -> Picture
-renderPlayer player@(Player _ (Just (PlayerMovement dir One)) shootDir) textureSet = shootDirectionTexture (Just dir) shootDir $ neutral $ playerDirectionTexture dir textureSet
-renderPlayer player@(Player _ (Just (PlayerMovement dir Two)) shootDir) textureSet = shootDirectionTexture (Just dir) shootDir $ walkLeft $ playerDirectionTexture dir textureSet
-renderPlayer player@(Player _ (Just (PlayerMovement dir Three)) shootDir) textureSet = shootDirectionTexture (Just dir) shootDir $ neutral $ playerDirectionTexture dir textureSet
-renderPlayer player@(Player _ (Just (PlayerMovement dir Four)) shootDir) textureSet = shootDirectionTexture (Just dir) shootDir $ walkRight $ playerDirectionTexture dir textureSet
-renderPlayer player@(Player _ Nothing shootDir) textureSet = shootDirectionTexture Nothing shootDir $ neutral $ fronts textureSet
+renderPlayer (Player _ (Just (PlayerMovement facing One)) shootDir) textureSet = shootDirectionTexture (Just facing) shootDir $ neutral $ playerDirectionTexture facing textureSet
+renderPlayer (Player _ (Just (PlayerMovement facing Two)) shootDir) textureSet = shootDirectionTexture (Just facing) shootDir $ walkLeft $ playerDirectionTexture facing textureSet
+renderPlayer (Player _ (Just (PlayerMovement facing Three)) shootDir) textureSet = shootDirectionTexture (Just facing) shootDir $ neutral $ playerDirectionTexture facing textureSet
+renderPlayer (Player _ (Just (PlayerMovement facing Four)) shootDir) textureSet = shootDirectionTexture (Just facing) shootDir $ walkRight $ playerDirectionTexture facing textureSet
+renderPlayer (Player _ Nothing shootDir) textureSet = shootDirectionTexture Nothing shootDir $ neutral $ fronts textureSet
 
 renderMonster :: TextureSet -> TextureSet -> Picture -> Monster -> Picture
 renderMonster _ _          dead (Monster (xpos, ypos) _ 0) = translate xpos ypos $ dead
-renderMonster _ textureSet _    (Monster (xpos, ypos) (Hunting dir) _) = translate xpos ypos $ directionTexture dir textureSet
+renderMonster _ textureSet _    (Monster (xpos, ypos) (Hunting facing) _) = translate xpos ypos $ directionTexture facing textureSet
 renderMonster textureSet _ _    (Monster (xpos, ypos) (Wander WalkUp _) _) = translate xpos ypos $ back textureSet
 renderMonster textureSet _ _    (Monster (xpos, ypos) (Wander WalkDown _) _) = translate xpos ypos $ front textureSet
 renderMonster textureSet _ _    (Monster (xpos, ypos) (Wander WalkLeft n) _) = translate xpos ypos $ rotate (16* fromIntegral n) $ left textureSet
 renderMonster textureSet _ _    (Monster (xpos, ypos) (Wander WalkRight n) _) = translate xpos ypos $ rotate ((-16)* fromIntegral n) $ right textureSet
 
 renderBolt :: TextureSet -> Bolt -> Picture
-renderBolt textureSet (Bolt (xpos, ypos) dir _ _) = translate xpos ypos $ directionTexture dir textureSet
+renderBolt textureSet (Bolt (xpos, ypos) facing _ _) = translate xpos ypos $ directionTexture facing textureSet
 
 directionTexture :: Direction -> TextureSet -> Picture
 directionTexture WalkUp = back
@@ -185,10 +186,10 @@ renderHealthBar (Monster (xmon, ymon) _ health) = Pictures [ translate xmon (ymo
 
 -- adds gameover text if appropriate
 gameOngoing :: Maybe Ending -> Int -> Map.Map String Picture -> [Picture] -> [Picture]
-gameOngoing (Just Lose) 1 texts pics =  pics ++ [translate (-50) 0 $ (texts Map.! "game-over")]
-gameOngoing (Just Lose) _ _     pics =  pics ++ [Color black $ translate (-100) 0 $ Scale 0.3 0.3 $ Text "Aaargh"]
-gameOngoing (Just Win)  _ _     pics =  pics ++ [Color black $ translate (-100) 0 $ Scale 0.3 0.3 $ Text "You win!"]
-gameOngoing Nothing     _ _     pics =  pics
+gameOngoing (Just Lose) 1 textTextures pics =  pics ++ [translate (-50) 0 $ (textTextures Map.! "game-over")]
+gameOngoing (Just Lose) _ _            pics =  pics ++ [Color black $ translate (-100) 0 $ Scale 0.3 0.3 $ Text "Aaargh"]
+gameOngoing (Just Win)  _ _            pics =  pics ++ [Color black $ translate (-100) 0 $ Scale 0.3 0.3 $ Text "You win!"]
+gameOngoing Nothing     _ _            pics =  pics
 
 -- add score and lives
 -- lives are reprented by circles
@@ -207,6 +208,6 @@ animation (Just (DeathAnimation _))       _      pics = pics
 animation (Just (NextLevelAnimation l n)) (w, h) pics = pics ++
                                                     [ Color (animationColor n) $ rectangleSolid (fromIntegral w) (fromIntegral h)
                                                     , Color white $ translate (-100) 0 $ scale 0.3 0.3 $ Text $ show l ]
-                                                    where animationColor n
-                                                            | n > 25 = makeColor 0 0 0 (0.04*(50-n))
-                                                            | otherwise = makeColor 0 0 0 (0.04*n)
+                                                    where animationColor i
+                                                            | n > 25 = makeColor 0 0 0 (0.04*(50-i))
+                                                            | otherwise = makeColor 0 0 0 (0.04*i)

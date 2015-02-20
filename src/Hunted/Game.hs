@@ -282,9 +282,9 @@ movePlayer :: Float
            -> Player
            -> Player
 movePlayer _ _ _ (Just _) _ player = player
-movePlayer increment dimensions direction Nothing shootDirection player
-         | outsideOfLimits dimensions (position (move direction shootDirection player increment)) playerSize = player
-         | otherwise = move direction shootDirection player increment
+movePlayer increment dimensions direction Nothing shootDir player
+         | outsideOfLimits dimensions (position (move direction shootDir player increment)) playerSize = player
+         | otherwise = move direction shootDir player increment
 
 outsideOfLimits :: (Float, Float) -> (Float, Float) -> Float -> Bool
 outsideOfLimits (width, height) (xmon, ymon) size = xmon > width/2 - size/2 ||
@@ -299,6 +299,7 @@ move keys sK (Player (xpos, ypos) (Just (PlayerMovement direction n)) _) increme
         | otherwise                 = Player ((xpos, ypos) `plus` increment `times` stepInDirection (dirFrom keys)) (Just $ PlayerMovement (dirFrom keys) One) (crossbowPointed sK)
 move keys sK (Player (xpos, ypos) Nothing _) increment = Player ((xpos, ypos) `plus` increment `times` stepInDirection (dirFrom keys)) (Just $ PlayerMovement (dirFrom keys) One) (crossbowPointed sK)
 
+crossbowPointed :: (Bool, Bool, Bool, Bool) -> Maybe Direction
 crossbowPointed (a,d,w,s)
     | w = Just WalkUp
     | s = Just WalkDown
@@ -405,7 +406,7 @@ stepInCurrentDirection direction (xpos, ypos) speed = speed `times` (stepInDirec
 
 safeOrDanger :: [Monster] -> [Monster] -> Maybe Ending -> Maybe StatusChange -> Maybe StatusChange
 safeOrDanger _ _ (Just _) _ = Just Safe
-safeOrDanger monsters monsters' _ currentStatus = do
+safeOrDanger monsters monsters' _ _ = do
   let statusChanges = mapMaybe monitorStatusChange (zip monsters monsters')
   foldl' dominatingChanges Nothing statusChanges
   where dominatingChanges _             Danger = Just Danger
