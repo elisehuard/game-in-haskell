@@ -35,3 +35,9 @@ Using textures and animations, and viewport:
 Let's add some music and sounds:
 
     cabal run music
+
+## Chapter 5
+
+Shooting, levels, can increase windowsize, etc
+
+    cabal run extended
