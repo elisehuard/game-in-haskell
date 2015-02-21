@@ -254,23 +254,17 @@ translateMatrix w h = concat $ map (zip xTiles)
                             lowerbound size = -(higherbound size)
 
 renderPlayer :: Maybe PlayerMovement -> TextureSet -> Picture
-renderPlayer (Just (PlayerMovement WalkUp One)) textureSet = neutral $ backs textureSet
-renderPlayer (Just (PlayerMovement WalkUp Two)) textureSet = walkLeft $ backs textureSet
-renderPlayer (Just (PlayerMovement WalkUp Three)) textureSet = neutral $ backs textureSet
-renderPlayer (Just (PlayerMovement WalkUp Four)) textureSet = walkRight $ backs textureSet
-renderPlayer (Just (PlayerMovement WalkDown One)) textureSet = neutral $ fronts textureSet
-renderPlayer (Just (PlayerMovement WalkDown Two)) textureSet = walkLeft $ fronts textureSet
-renderPlayer (Just (PlayerMovement WalkDown Three)) textureSet = neutral $ fronts textureSet
-renderPlayer (Just (PlayerMovement WalkDown Four)) textureSet = walkRight $ fronts textureSet
-renderPlayer (Just (PlayerMovement WalkRight One)) textureSet = neutral $ rights textureSet
-renderPlayer (Just (PlayerMovement WalkRight Two)) textureSet = walkLeft $ rights textureSet
-renderPlayer (Just (PlayerMovement WalkRight Three)) textureSet = neutral $ rights textureSet
-renderPlayer (Just (PlayerMovement WalkRight Four)) textureSet = walkRight $ rights textureSet
-renderPlayer (Just (PlayerMovement WalkLeft One)) textureSet = neutral $ lefts textureSet
-renderPlayer (Just (PlayerMovement WalkLeft Two)) textureSet = walkLeft $ lefts textureSet
-renderPlayer (Just (PlayerMovement WalkLeft Three)) textureSet = neutral $ lefts textureSet
-renderPlayer (Just (PlayerMovement WalkLeft Four)) textureSet = walkRight $ lefts textureSet
+renderPlayer (Just (PlayerMovement facing One)) textureSet = neutral $ playerDirectionTexture facing textureSet
+renderPlayer (Just (PlayerMovement facing Two)) textureSet = walkLeft $ playerDirectionTexture facing textureSet
+renderPlayer (Just (PlayerMovement facing Three)) textureSet = neutral $ playerDirectionTexture facing textureSet
+renderPlayer (Just (PlayerMovement facing Four)) textureSet = walkRight $ playerDirectionTexture facing textureSet
 renderPlayer Nothing textureSet = neutral $ fronts textureSet
+
+playerDirectionTexture :: Direction -> TextureSet -> WalkingTexture
+playerDirectionTexture WalkUp = backs
+playerDirectionTexture WalkDown = fronts
+playerDirectionTexture WalkLeft = lefts
+playerDirectionTexture WalkRight = rights
 
 renderMonster :: MonsterStatus -> Float -> Float -> TextureSet -> TextureSet -> Picture
 renderMonster (Hunting HuntingLeft) xpos ypos _ textureSet = translate xpos ypos $ left textureSet
