@@ -85,25 +85,6 @@ executable music
   hs-source-dirs:      src
   default-language:    Haskell2010
 
-library
-  exposed-modules:     Hunted.GameTypes
-                     , Hunted.Game
-                     , Hunted.Sound
-                     , Hunted.Graphics
-                     , Hunted.Backend
-  -- other-extensions:
-  ghc-options:       -Wall
-  build-depends:       base >=4.7 && <4.8
-                     , GLFW-b == 1.4.6
-                     , gloss == 1.9.2.1
-                     , gloss-rendering == 1.9.2.1
-                     , elerea == 2.8.0
-                     , random == 1.1
-                     , ALUT == 2.3.0.2
-                     , containers
-  hs-source-dirs:      src
-  default-language:    Haskell2010
-
 executable extended
   main-is:             Hunted/Main.hs
   other-modules:       Hunted.GameTypes
@@ -122,6 +103,53 @@ executable extended
                      , containers
   hs-source-dirs:      src
   default-language:    Haskell2010
+
+library
+  exposed-modules:     Testing.GameTypes
+                     , Testing.Internals.Game
+                     , Testing.Game
+                     , Testing.Sound
+                     , Testing.Graphics
+                     , Testing.Backend
+  -- other-extensions:
+  ghc-options:       -Wall
+  build-depends:       base >=4.7 && <4.8
+                     , GLFW-b == 1.4.6
+                     , gloss == 1.9.2.1
+                     , gloss-rendering == 1.9.2.1
+                     , elerea == 2.8.0
+                     , random == 1.1
+                     , ALUT == 2.3.0.2
+                     , containers
+  hs-source-dirs:      src
+  default-language:    Haskell2010
+
+executable testing
+  main-is:             Testing/Main.hs
+  build-depends:       base >=4.7 && <4.8
+                     , elerea == 2.8.0
+                     , game-in-haskell-book
+                     , GLFW-b == 1.4.6
+                     , gloss == 1.9.2.1
+                     , gloss-rendering == 1.9.2.1
+                     , elerea == 2.8.0
+                     , random == 1.1
+                     , ALUT == 2.3.0.2
+                     , containers
+  ghc-options:         -Wall
+  hs-source-dirs:      src
+  default-language:    Haskell2010
+
+test-suite tests
+  type:                exitcode-stdio-1.0
+  main-is:             Main.hs
+  hs-source-dirs:      test
+  build-depends:       base >=4.7 && <4.8
+                     , HUnit >= 1.2
+                     , test-framework       >= 0.6
+                     , test-framework-hunit >= 0.2
+                     , test-framework-th    >= 0.2
+                     , game-in-haskell-book
 
 test-suite hlint
   type: exitcode-stdio-1.0
