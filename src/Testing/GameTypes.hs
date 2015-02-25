@@ -5,13 +5,13 @@ import System.Random
 import Graphics.Gloss.Data.ViewPort (ViewPort)
 import Data.Monoid
 
-type Pos = (Float, Float)
+type Pos = (Int, Int)
 data Vec num = Vec num num
 
-dist :: Pos -> Pos -> Float
+dist :: Pos -> Pos -> Int
 dist (x1, y1) (x2, y2) = (x2 - x1)^2 + (y2 - y1)^2
 
-times :: Float -> Pos -> Pos
+times :: Int -> Pos -> Pos
 times a (x,y) = (a*x, a*y)
 infixl 7 `times`
 
@@ -20,7 +20,7 @@ plus (a,b) (c,d) = getTupleSum $ (Sum a, Sum b) <> (Sum c, Sum d)
                    where getTupleSum (x, y) = (getSum x, getSum y)
 infixl 6 `plus`
 
-type Health = Float
+type Health = Int
 
 data Player = Player { position :: Pos, movement :: Maybe PlayerMovement, shootDirection :: Maybe Direction }
                deriving Show
@@ -52,7 +52,7 @@ data RenderState = RenderState { renderState_player :: Player
                                , renderState_viewport :: ViewPort
                                , renderState_bolts :: [Bolt]
                                , renderState_lives :: Int
-                               , renderState_score :: Float
+                               , renderState_score :: Int
                                , renderState_animation :: Maybe Animation
                                , renderState_windowSize :: (Int, Int) }
                  | StartRenderState (Int, Int)

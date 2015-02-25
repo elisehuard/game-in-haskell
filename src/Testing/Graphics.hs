@@ -111,8 +111,8 @@ renderFrame window glossState _ _ (StartRenderState dimensions) = do
 tileSize :: Float
 tileSize = 160
 
-tiledBackground :: Picture -> Float -> Float -> Picture
-tiledBackground texture width height = Pictures $ map (\a ->  ((uncurry translate) a) texture) $ translateMatrix width height
+tiledBackground :: Picture -> Int -> Int -> Picture
+tiledBackground texture width height = Pictures $ map (\a ->  ((uncurry translate) a) texture) $ translateMatrix (fromIntegral width) (fromIntegral height)
 
 -- what we want: 640, 480
 -- -320--x--(-160)--x--0--x--160--x--320
@@ -135,16 +135,18 @@ renderPlayer (Player _ (Just (PlayerMovement facing Three)) shootDir) textureSet
 renderPlayer (Player _ (Just (PlayerMovement facing Four)) shootDir) textureSet = shootDirectionTexture (Just facing) shootDir $ walkRight $ playerDirectionTexture facing textureSet
 renderPlayer (Player _ Nothing shootDir) textureSet = shootDirectionTexture Nothing shootDir $ neutral $ fronts textureSet
 
+translateInt x y = translate (fromIntegral x) (fromIntegral y)
+
 renderMonster :: TextureSet -> TextureSet -> Picture -> Monster -> Picture
-renderMonster _ _          dead (Monster (xpos, ypos) _ 0) = translate xpos ypos $ dead
-renderMonster _ textureSet _    (Monster (xpos, ypos) (Hunting facing) _) = translate xpos ypos $ directionTexture facing textureSet
-renderMonster textureSet _ _    (Monster (xpos, ypos) (Wander WalkUp _) _) = translate xpos ypos $ back textureSet
-renderMonster textureSet _ _    (Monster (xpos, ypos) (Wander WalkDown _) _) = translate xpos ypos $ front textureSet
-renderMonster textureSet _ _    (Monster (xpos, ypos) (Wander WalkLeft n) _) = translate xpos ypos $ rotate (16* fromIntegral n) $ left textureSet
-renderMonster textureSet _ _    (Monster (xpos, ypos) (Wander WalkRight n) _) = translate xpos ypos $ rotate ((-16)* fromIntegral n) $ right textureSet
+renderMonster _ _          dead (Monster (xpos, ypos) _ 0) = translateInt xpos ypos $ dead
+renderMonster _ textureSet _    (Monster (xpos, ypos) (Hunting facing) _) = translateInt xpos ypos $ directionTexture facing textureSet
+renderMonster textureSet _ _    (Monster (xpos, ypos) (Wander WalkUp _) _) = translateInt xpos ypos $ back textureSet
+renderMonster textureSet _ _    (Monster (xpos, ypos) (Wander WalkDown _) _) = translateInt xpos ypos $ front textureSet
+renderMonster textureSet _ _    (Monster (xpos, ypos) (Wander WalkLeft n) _) = translateInt xpos ypos $ rotate (16* fromIntegral n) $ left textureSet
+renderMonster textureSet _ _    (Monster (xpos, ypos) (Wander WalkRight n) _) = translateInt xpos ypos $ rotate ((-16)* fromIntegral n) $ right textureSet
 
 renderBolt :: TextureSet -> Bolt -> Picture
-renderBolt textureSet (Bolt (xpos, ypos) facing _ _) = translate xpos ypos $ directionTexture facing textureSet
+renderBolt textureSet (Bolt (xpos, ypos) facing _ _) = translateInt xpos ypos $ directionTexture facing textureSet
 
 directionTexture :: Direction -> TextureSet -> Picture
 directionTexture WalkUp = back
@@ -181,8 +183,8 @@ healthBarWidth = 5
 
 renderHealthBar :: Monster -> Picture
 renderHealthBar (Monster _            _ 0)      = Pictures []
-renderHealthBar (Monster (xmon, ymon) _ health) = Pictures [ translate xmon (ymon + 30) $ Color black $ rectangleSolid healthBarLength healthBarWidth
-                                                           , translate (xmon - healthBarLength/2 + health*healthBarLength/(numberOfLives*2)) (ymon + 30) $ Color red $ rectangleSolid (health*healthBarLength/numberOfLives) healthBarWidth ]
+renderHealthBar (Monster (xmon, ymon) _ health) = Pictures [ translateInt xmon (ymon + 30) $ Color black $ rectangleSolid healthBarLength healthBarWidth
+                                                           , translate ((fromIntegral xmon) - healthBarLength/2 + (fromIntegral health)*healthBarLength/(numberOfLives*2)) ((fromIntegral ymon) + 30) $ Color red $ rectangleSolid ((fromIntegral health)*healthBarLength/numberOfLives) healthBarWidth ]
 
 -- adds gameover text if appropriate
 gameOngoing :: Maybe Ending -> Int -> Map.Map String Picture -> [Picture] -> [Picture]
@@ -193,11 +195,11 @@ gameOngoing Nothing     _ _            pics =  pics
 
 -- add score and lives
 -- lives are reprented by circles
-gameStats :: Int -> Float -> (Int, Int) -> [Picture] -> [Picture]
+gameStats :: Int -> Int -> (Int, Int) -> [Picture] -> [Picture]
 gameStats lives score (w, h) pics = do
   let fWidth = fromIntegral w
       fHeight = fromIntegral h
-  pics ++ [ Color black $ translate (fWidth/2 - 80) (fHeight/2 - 50) $ Scale 0.2 0.2 $ Text $ show $ round score
+  pics ++ [ Color black $ translate (fWidth/2 - 80) (fHeight/2 - 50) $ Scale 0.2 0.2 $ Text $ show score
           , Color (makeColor 1 1 1 0.5) $ translate ((-fWidth/2) + 80) (fHeight/2 - 40) $ rectangleSolid 250 40
           , Color black $ translate ((-fWidth)/2 + 20) (fHeight/2 - 50) $ Scale 0.2 0.2 $ Text "lives: "]
        ++ map (\i -> Color red $ translate ((-fWidth)/2 + 90 + 40*i) (fHeight/2 - 40) $ circleSolid 10) [0..(fromIntegral (lives - 1))]

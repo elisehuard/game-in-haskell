@@ -4,6 +4,8 @@
 module Testing.Internals.Game (
   hunted
 , monsterHits
+, worldWidth
+, worldHeight
 ) where
 
 import Testing.GameTypes
@@ -20,42 +22,44 @@ import System.Random (random, RandomGen(..), randomRs)
 initialPlayer :: Player
 initialPlayer = Player (0, 0) Nothing Nothing
 
-initialMonster :: (Float, Float) -> Monster
+initialMonster :: (Int, Int) -> Monster
 initialMonster pos = Monster pos (Wander WalkUp wanderDist) 4
 
 initialViewport :: ViewPort
 initialViewport = ViewPort { viewPortTranslate = (0, 0), viewPortRotate = 0, viewPortScale = viewportScale }
 
-worldWidth :: Float
+worldWidth :: Int
 worldWidth = 2560
 
-worldHeight :: Float
+worldHeight :: Int
 worldHeight = 1920
 
 viewportScale :: Float
 viewportScale = 4
 
-playerSize :: Float
+playerSpeed :: Int
+playerSpeed = 10
+
+playerSize :: Int
 playerSize = 20
 
-monsterSize :: Float
+monsterSize :: Int
 monsterSize = 20
 
-monsterSpeed :: Float
+monsterSpeed :: Int
 monsterSpeed = 5
 
 wanderDist :: Int
 wanderDist = 45
 
-huntingDist :: Float
+huntingDist :: Int
 huntingDist = 200
 
 boltRange :: Range
 boltRange = 20
 
-boltSpeed :: Float
+boltSpeed :: Int
 boltSpeed = 20
-
 
 initialLevel :: LevelStatus
 initialLevel = Level 1
@@ -143,13 +147,12 @@ playLevel :: RandomGen t =>
           -> SignalGen (Signal GameState, Signal Bool)
 -}
 playLevel windowSize directionKey shootKey randomGenerator level@(Level n) currentScore lives = mdo
-
     -- render signals
     let worldDimensions = (worldWidth, worldHeight)
-        randomWidths = take n $ randomRs (round ((-worldWidth)/2 + monsterSize/2), round ((worldWidth/2) - monsterSize/2)) randomGenerator :: [Int]
-        randomHeights = take n $ randomRs (round ((-worldWidth)/2 + monsterSize/2), round ((worldWidth/2) - monsterSize/2)) randomGenerator :: [Int]
-        monsterPositions = zip (map fromIntegral randomWidths) (map fromIntegral randomHeights)
-    player <- transfer3 initialPlayer (movePlayer 10 worldDimensions) directionKey levelOver' shootKey
+        randomWidths = take n $ randomRs ((-worldWidth) `quot` 2 + monsterSize `quot` 2, (worldWidth `quot` 2) - monsterSize `quot` 2) randomGenerator :: [Int]
+        randomHeights = take n $ randomRs ((-worldWidth) `quot` 2 + monsterSize `quot` 2, (worldWidth `quot` 2) - monsterSize `quot` 2) randomGenerator :: [Int]
+        monsterPositions = zip randomWidths randomHeights
+    player <- transfer3 initialPlayer (movePlayer playerSpeed worldDimensions) directionKey levelOver' shootKey
     randomNumber <- stateful (undefined, randomGenerator) nextRandom
     hits <- memo (fmap <$> (monsterHits <$> bolts') <*> monsters')
     monsters <- transfer4 (fmap initialMonster monsterPositions) (monsterWanderings worldDimensions) player randomNumber levelOver' hits
@@ -194,7 +197,7 @@ playLevel windowSize directionKey shootKey randomGenerator level@(Level n) curre
 
     return (GameState <$> renderState <*> soundState, animationEnd <$> animation)
     where playerEaten player monsters
-              | any (\monster -> distance player monster < (playerSize^2  :: Float)) monsters = Just Lose
+              | any (\monster -> distance player monster < playerSize^2) monsters = Just Lose
               | otherwise                                                                     = Nothing
           monstersDead monsters
               | all monsterDead monsters = Just Win
@@ -240,13 +243,13 @@ animationEnd _ = False
 moveBolt :: Bolt -> Bolt
 moveBolt (Bolt (xpos, ypos) direction range alreadyHit) = Bolt (boltSpeed `times` (stepInDirection direction) `plus` (xpos, ypos)) direction (range - 1) alreadyHit
 
-boltIsAlive :: (Float, Float) -> [Monster] -> Bolt -> Bool
+boltIsAlive :: (Int, Int) -> [Monster] -> Bolt -> Bool
 boltIsAlive worldDimensions monsters bolt = (not (any (\monster -> hasHit monster bolt) monsters)) && boltStillGoing worldDimensions bolt
 
 -- let it come closer so that the hit can be registered before removing the bolt
 hasHit :: Monster -> Bolt -> Bool
 hasHit (Monster (xmon, ymon) _ _) (Bolt (x, y) _ _ _)
-  | dist (xmon, ymon) (x, y) < ((monsterSize/4)^2) = True
+  | dist (xmon, ymon) (x, y) < ((monsterSize `quot` 4)^2) = True
   | otherwise = False
 
 edgify :: Signal (Bool, Bool, Bool, Bool)
@@ -261,9 +264,9 @@ throttle shot sig
    | otherwise = sig
 
 -- boltStillGoing depends on the bolt range and on whether it hit the monster
-boltStillGoing :: (Float, Float) -> Bolt -> Bool
+boltStillGoing :: (Int, Int) -> Bolt -> Bool
 boltStillGoing (width, height) (Bolt (x, y) _ range alreadyHit) =
-    (not alreadyHit) && (range > 0) && x < width/2 && y < height/2
+    (not alreadyHit) && (range > 0) && x < width `quot` 2 && y < height `quot` 2
 
 stillHunting :: Maybe Ending -> Monster -> Bool
 stillHunting (Just _) _                         = False
@@ -273,10 +276,10 @@ stillHunting Nothing  _                         = False
 
 viewPortMove :: Player -> ViewPort -> ViewPort
 viewPortMove (Player (x,y) _ _) (ViewPort { viewPortTranslate = _, viewPortRotate = rotation, viewPortScale = scaled }) =
-        ViewPort { viewPortTranslate = ((-x), (-y)), viewPortRotate = rotation, viewPortScale = scaled }
+        ViewPort { viewPortTranslate = (fromIntegral (-x), fromIntegral (-y)), viewPortRotate = rotation, viewPortScale = scaled }
 
-movePlayer :: Float
-           -> (Float, Float)
+movePlayer :: Int
+           -> (Int, Int)
            -> (Bool, Bool, Bool, Bool)
            -> Maybe Ending
            -> (Bool, Bool, Bool, Bool)
@@ -287,13 +290,13 @@ movePlayer increment dimensions direction Nothing shootDir player
          | outsideOfLimits dimensions (position (move direction shootDir player increment)) playerSize = player
          | otherwise = move direction shootDir player increment
 
-outsideOfLimits :: (Float, Float) -> (Float, Float) -> Float -> Bool
-outsideOfLimits (width, height) (xmon, ymon) size = xmon > width/2 - size/2 ||
-                                                    xmon < (-(width)/2 + size/2) ||
-                                                    ymon > height/2 - size/2 ||
-                                                    ymon < (-(height)/2 + size/2)
+outsideOfLimits :: (Int, Int) -> (Int, Int) -> Int -> Bool
+outsideOfLimits (width, height) (xmon, ymon) size = xmon > width `quot` 2 - size `quot` 2 ||
+                                                    xmon < (-(width) `quot` 2 + size `quot` 2) ||
+                                                    ymon > height `quot` 2 - size `quot` 2 ||
+                                                    ymon < (-(height) `quot` 2 + size `quot` 2)
 
-move :: (Bool, Bool, Bool, Bool) -> (Bool, Bool, Bool, Bool) -> Player -> Float -> Player
+move :: (Bool, Bool, Bool, Bool) -> (Bool, Bool, Bool, Bool) -> Player -> Int -> Player
 move (False, False, False, False) sK (Player (xpos, ypos) _ _) _ = Player (xpos, ypos) Nothing (crossbowPointed sK)
 move keys sK (Player (xpos, ypos) (Just (PlayerMovement direction n)) _) increment
         | dirFrom keys == direction = Player ((xpos, ypos) `plus` increment `times` stepInDirection direction) (Just $ PlayerMovement direction (circular n)) (crossbowPointed sK)
@@ -316,40 +319,40 @@ dirFrom (l, r, u, d)
   | d = WalkDown
   | otherwise = error "no direction from keys"
 
-stepInDirection :: Direction -> (Float, Float)
+stepInDirection :: Direction -> (Int, Int)
 stepInDirection WalkLeft  = (-1, 0)
 stepInDirection WalkRight = (1, 0)
 stepInDirection WalkUp    = (0, 1)
 stepInDirection WalkDown  = (0, -1)
 
-hitOrMiss :: Float -> Monster -> Monster
+hitOrMiss :: Int -> Monster -> Monster
 hitOrMiss hits (Monster (xmon, ymon) status health) =
     Monster (xmon, ymon) status (health - hits)
 
-monsterHits :: [Bolt] -> Monster -> Float
+monsterHits :: [Bolt] -> Monster -> Int
 monsterHits bolts monster = fromIntegral $ length
-                                         $ filter (<= (monsterSize/2)^2) (boltDistances monster (filter notCounted bolts))
+                                         $ filter (<= (monsterSize `quot` 2)^2) (boltDistances monster (filter notCounted bolts))
                                          where notCounted (Bolt _ _ _ alreadyHit) = not alreadyHit
 
-accumulateScore :: [Float] -> Float -> Float
+accumulateScore :: [Int] -> Int -> Int
 accumulateScore hits score = score + sum hits
 
-boltDistances :: Monster -> [Bolt] -> [Float]
+boltDistances :: Monster -> [Bolt] -> [Int]
 boltDistances (Monster (xmon, ymon) _ _) bolts =
     map (\(Bolt (xbolt, ybolt) _ _ _) -> dist (xmon, ymon) (xbolt, ybolt)) bolts
 
 boltHit :: [Monster] -> [Bolt] -> Bool
-boltHit monsters bolts = any (== True) $ concat $ map (\monster -> map (< (monsterSize/2)^2) (boltDistances monster bolts)) monsters
+boltHit monsters bolts = any (== True) $ concat $ map (\monster -> map (< (monsterSize `quot` 2)^2) (boltDistances monster bolts)) monsters
 
-monsterWanderings :: RandomGen t => (Float, Float) -> Player -> (Direction, t) -> Maybe Ending -> [Float] -> [Monster] -> [Monster]
+monsterWanderings :: RandomGen t => (Int, Int) -> Player -> (Direction, t) -> Maybe Ending -> [Int] -> [Monster] -> [Monster]
 monsterWanderings dim p gen ending hits monsters = map (wanderOrHunt dim p gen ending) (zip hits monsters)
 
 wanderOrHunt :: System.Random.RandomGen t =>
-                (Float, Float)
+                (Int, Int)
                 -> Player
                 -> (Direction, t)
                 -> Maybe Ending
-                -> (Float, Monster)
+                -> (Int, Monster)
                 -> Monster
 -- game ended
 wanderOrHunt _ _ _ (Just _) (_, monster) = monster
@@ -367,7 +370,7 @@ wanderOrHunt dimensions player (r, _) Nothing (hits, monster) = do
 close :: Player -> Monster -> Bool
 close player monster = distance player monster < huntingDist^2
 
-distance :: Player -> Monster -> Float
+distance :: Player -> Monster -> Int
 distance (Player (xpos, ypos) _ _) (Monster (xmon, ymon) _ _) = dist (xpos, ypos) (xmon, ymon)
 
 -- if player is upper left quadrant, diagonal left
@@ -375,7 +378,7 @@ distance (Player (xpos, ypos) _ _) (Monster (xmon, ymon) _ _) = dist (xpos, ypos
 hunt :: Player -> Monster -> Monster
 hunt (Player (xpos, ypos) _ _) (Monster (xmon, ymon) _ health) = Monster ((xmon + (signum (xpos - xmon))*monsterSpeed), (ymon + (signum (ypos - ymon))*monsterSpeed)) (Hunting $ huntingDirection (signum (xpos - xmon)) (signum (ypos - ymon))) health
 
-huntingDirection :: Float -> Float -> Direction
+huntingDirection :: Int -> Int -> Direction
 huntingDirection (-1) (-1) = WalkLeft
 huntingDirection (-1) 1 = WalkLeft
 huntingDirection 1 (-1) = WalkRight
@@ -384,7 +387,7 @@ huntingDirection (-1) _ = WalkLeft
 huntingDirection _ _ = WalkRight
 
 -- turn in random direction
-wander :: Direction -> Monster -> (Float, Float) -> Monster
+wander :: Direction -> Monster -> (Int, Int) -> Monster
 wander r (Monster (xmon, ymon) (Wander _ 0) health) _ = Monster (xmon, ymon) (Wander r wanderDist) health
 wander r (Monster (xmon, ymon) (Hunting _) health)  _ = Monster (xmon, ymon) (Wander r wanderDist) health
 -- go straight
@@ -402,7 +405,7 @@ continueDirection WalkLeft True = WalkRight
 continueDirection WalkRight True = WalkLeft
 continueDirection direction False = direction
 
-stepInCurrentDirection :: Direction -> (Float, Float) -> Float -> Pos
+stepInCurrentDirection :: Direction -> (Int, Int) -> Int -> Pos
 stepInCurrentDirection direction (xpos, ypos) speed = speed `times` (stepInDirection direction) `plus` (xpos, ypos)
 
 safeOrDanger :: [Monster] -> [Monster] -> Maybe Ending -> Maybe StatusChange -> Maybe StatusChange
@@ -422,4 +425,4 @@ monitorStatusChange _ = Nothing
 
 -- output functions
 outputFunction window glossState textures sounds (GameState renderState soundState) =
-  (renderFrame window glossState textures (worldWidth, worldHeight) renderState) >> (playSounds sounds soundState)
+  (renderFrame window glossState textures (worldWidth, worldHeight) renderState) >> playSounds sounds soundState
