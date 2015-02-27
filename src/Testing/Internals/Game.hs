@@ -10,6 +10,7 @@ module Testing.Internals.Game (
 , playerSize
 , outsideOfLimits
 , movePlayer
+, defaultStart
 ) where
 
 import Testing.GameTypes
@@ -22,6 +23,7 @@ import Data.Maybe (mapMaybe)
 import Data.Foldable (foldl')
 import Graphics.Gloss.Data.ViewPort
 import System.Random (random, RandomGen(..), randomRs)
+import Data.Maybe (fromMaybe)
 
 initialPlayer :: Player
 initialPlayer = Player (0, 0) Nothing Nothing
@@ -71,17 +73,27 @@ initialLevel = Level 1
 initialLives :: Int
 initialLives = 3
 
+defaultStart :: StartState
+defaultStart = StartState { gameStatusSignal = Start
+                          , levelCountSignal = initialLevel
+                          , livesSignal = initialLives
+                          , scoreSignal = 0
+                          , playerSignal = initialPlayer
+                          , monsterPos = Nothing
+                          , animationSignal = Nothing
+                          , viewportSignal = initialViewport }
+
 {-
 -- GlossState needs to be exported
 --   Graphics.Gloss.Internals.Rendering.State
 --   pull request required
 -}
 -- expected:
-hunted win windowSize directionKey shootKey randomGenerator textures glossState sounds = mdo
-  let mkGame = playGame windowSize directionKey shootKey randomGenerator
+hunted win windowSize directionKey shootKey randomGenerator textures glossState sounds startState = mdo
+  let mkGame = playGame windowSize directionKey shootKey randomGenerator startState
   (gameState, gameTrigger) <- switcher $ mkGame <$> gameStatus'
-  gameStatus <- transfer Start gameProgress gameTrigger
-  gameStatus' <- delay Start gameStatus
+  gameStatus <- transfer (gameStatusSignal startState) gameProgress gameTrigger
+  gameStatus' <- delay (gameStatusSignal startState) gameStatus
   return $ outputFunction win glossState textures sounds <$> gameState
   where gameProgress False s      = s
         gameProgress True  Start  = InGame
@@ -93,24 +105,25 @@ playGame :: RandomGen t =>
          -> Signal (Bool, Bool, Bool, Bool)
          -> Signal (Bool, Bool, Bool, Bool)
          -> t
+         -> StartState
          -> GameStatus
          -> SignalGen (Signal GameState, Signal Bool)
 -- start game when pressing s
-playGame windowSize _ shootKey _ Start = mdo
+playGame windowSize _ shootKey _ _ Start = mdo
     let startGame = sIsPressed <$> shootKey
         renderState = StartRenderState <$> windowSize
     return (GameState <$> renderState <*> pure StartSoundState, startGame)
     where sIsPressed (_,_,_,s) = s
 
 -- bool should be gameOver
-playGame windowSize directionKey shootKey randomGenerator InGame = mdo
-  (gameState, levelTrigger) <- switcher $ playLevel windowSize directionKey shootKey randomGenerator <$> levelCount' <*> score' <*> lives'
-  levelCount <- transfer2 initialLevel levelProgression gameState levelTrigger
-  levelCount' <- delay initialLevel levelCount
-  lives <- transfer2 initialLives decrementLives gameState levelTrigger
-  lives' <- delay initialLives lives
+playGame windowSize directionKey shootKey randomGenerator startState InGame = mdo
+  (gameState, levelTrigger) <- switcher $ playLevel windowSize directionKey shootKey randomGenerator startState <$> levelCount' <*> score' <*> lives'
+  levelCount <- transfer2 (levelCountSignal startState) levelProgression gameState levelTrigger
+  levelCount' <- delay (levelCountSignal startState) levelCount
+  lives <- transfer2 (livesSignal startState) decrementLives gameState levelTrigger
+  lives' <- delay (livesSignal startState) lives
   score <- memo (stateScore <$> gameState)
-  score' <- delay 0 score
+  score' <- delay (scoreSignal startState) score
   let gameOver = isGameOver <$> gameState
   return (gameState, gameOver)
   where isGameOver (GameState (RenderState {renderState_lives = l}) _) = l == 0
@@ -150,22 +163,23 @@ playLevel :: RandomGen t =>
           -> Int
           -> SignalGen (Signal GameState, Signal Bool)
 -}
-playLevel windowSize directionKey shootKey randomGenerator level@(Level n) currentScore lives = mdo
+playLevel windowSize directionKey shootKey randomGenerator startState level@(Level n) currentScore lives = mdo
     -- render signals
     let worldDimensions = (worldWidth, worldHeight)
         randomWidths = take n $ randomRs ((-worldWidth) `quot` 2 + monsterSize `quot` 2, (worldWidth `quot` 2) - monsterSize `quot` 2) randomGenerator :: [Int]
         randomHeights = take n $ randomRs ((-worldWidth) `quot` 2 + monsterSize `quot` 2, (worldWidth `quot` 2) - monsterSize `quot` 2) randomGenerator :: [Int]
         monsterPositions = zip randomWidths randomHeights
+        startMonsterPositions = fromMaybe monsterPositions (monsterPos startState)
     player <- transfer3 initialPlayer (movePlayer playerSpeed worldDimensions) directionKey levelOver' shootKey
     randomNumber <- stateful (undefined, randomGenerator) nextRandom
     hits <- memo (fmap <$> (monsterHits <$> bolts') <*> monsters')
-    monsters <- transfer4 (fmap initialMonster monsterPositions) (monsterWanderings worldDimensions) player randomNumber levelOver' hits
-    monsters' <- delay (map initialMonster monsterPositions) monsters
+    monsters <- transfer4 (fmap initialMonster startMonsterPositions) (monsterWanderings worldDimensions) player randomNumber levelOver' hits
+    monsters' <- delay (map initialMonster startMonsterPositions) monsters
     score <- transfer currentScore accumulateScore hits
     levelOver <- memo (levelEnds <$> player <*> monsters)
     levelOver' <- delay Nothing levelOver
-    animation <- transfer Nothing (endAnimation level) levelOver
-    viewport <- transfer initialViewport viewPortMove player
+    animation <- transfer (animationSignal startState) (endAnimation level) levelOver
+    viewport <- transfer (viewportSignal startState) viewPortMove player
 
     shoot <- edgify shootKey
     let bolt direction range startPosition = stateful (Bolt startPosition direction range False) moveBolt

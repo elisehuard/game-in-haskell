@@ -82,3 +82,16 @@ data GameStatus = Start | InGame
 
 data Animation = DeathAnimation Float | NextLevelAnimation LevelStatus Float
                  deriving Show
+
+data StartState = StartState { gameStatusSignal :: GameStatus
+                             , levelCountSignal :: LevelStatus
+                             , livesSignal :: Int
+                             , scoreSignal :: Int
+                             , playerSignal :: Player
+                             , monsterPos :: Maybe [Pos]
+                             , animationSignal :: Maybe Animation
+                             , viewportSignal :: ViewPort }
+                  deriving Show
+
+-- not declared in Gloss, so here goes
+instance Show ViewPort

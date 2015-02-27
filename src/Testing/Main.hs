@@ -28,7 +28,7 @@ main = do
       withSound $ \_ _ -> do
           sounds <- loadSounds
           backgroundMusic (backgroundTune sounds)
-          network <- start $ hunted win windowSize directionKey shootKey randomGenerator textures glossState sounds
+          network <- start $ hunted win windowSize directionKey shootKey randomGenerator textures glossState sounds defaultStart
           fix $ \loop -> do
                readInput win directionKeySink shootKeySink
                join network
