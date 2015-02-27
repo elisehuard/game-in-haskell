@@ -6,6 +6,10 @@ module Testing.Internals.Game (
 , monsterHits
 , worldWidth
 , worldHeight
+, playerSpeed
+, playerSize
+, outsideOfLimits
+, movePlayer
 ) where
 
 import Testing.GameTypes
