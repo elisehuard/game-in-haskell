@@ -1,9 +1,12 @@
+{-# LANGUAGE DeriveGeneric #-}
 {-# OPTIONS_GHC -fno-warn-type-defaults #-}
 module Testing.GameTypes where
 
 import System.Random
-import Graphics.Gloss.Data.ViewPort (ViewPort)
+import Graphics.Gloss.Data.ViewPort
 import Data.Monoid
+import Data.Aeson
+import GHC.Generics
 
 type Pos = (Int, Int)
 data Vec num = Vec num num
@@ -23,11 +26,19 @@ infixl 6 `plus`
 type Health = Int
 
 data Player = Player { position :: Pos, movement :: Maybe PlayerMovement, shootDirection :: Maybe Direction }
-               deriving Show
+               deriving (Show, Generic)
+instance FromJSON Player
+instance ToJSON Player
+
 data PlayerMovement = PlayerMovement { dir :: Direction, step :: WalkStage }
-               deriving Show
+               deriving (Show, Generic)
+instance FromJSON PlayerMovement
+instance ToJSON PlayerMovement
+
 data WalkStage = One | Two | Three | Four
-                 deriving (Show, Eq, Enum, Bounded)
+                 deriving (Show, Eq, Enum, Bounded, Generic)
+instance FromJSON WalkStage
+instance ToJSON WalkStage
 
 circular :: (Eq x, Enum x, Bounded x) => x -> x
 circular x = if x == maxBound then minBound else succ x
@@ -39,7 +50,9 @@ data MonsterStatus = Wander Direction Int
                    | Hunting Direction
                deriving Show
 data Direction = WalkUp | WalkDown | WalkLeft | WalkRight
-                 deriving (Show, Enum, Bounded, Eq)
+                 deriving (Show, Enum, Bounded, Eq, Generic)
+instance FromJSON Direction
+instance ToJSON Direction
 
 instance Random Direction where
   randomR (a, b) g = case randomR (fromEnum a, fromEnum b) g of
@@ -76,12 +89,19 @@ data Ending = Win | Lose
               deriving (Show, Eq)
 
 data LevelStatus = Level Int
-                   deriving Show
+                   deriving (Show, Generic)
+instance FromJSON LevelStatus
+instance ToJSON LevelStatus
+
 data GameStatus = Start | InGame
-                  deriving Show
+                  deriving (Show, Generic)
+instance FromJSON GameStatus
+instance ToJSON GameStatus
 
 data Animation = DeathAnimation Float | NextLevelAnimation LevelStatus Float
-                 deriving Show
+                 deriving (Show, Generic)
+instance FromJSON Animation
+instance ToJSON Animation
 
 data StartState = StartState { gameStatusSignal :: GameStatus
                              , levelCountSignal :: LevelStatus
@@ -90,8 +110,9 @@ data StartState = StartState { gameStatusSignal :: GameStatus
                              , playerSignal :: Player
                              , monsterPos :: Maybe [Pos]
                              , animationSignal :: Maybe Animation
-                             , viewportSignal :: ViewPort }
-                  deriving Show
+                             , viewportTranslateSignal :: Pos }
+                  deriving (Show, Generic)
 
--- not declared in Gloss, so here goes
-instance Show ViewPort
+instance FromJSON StartState
+instance ToJSON StartState
+

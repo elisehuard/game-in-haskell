@@ -11,6 +11,7 @@ module Testing.Internals.Game (
 , outsideOfLimits
 , movePlayer
 , defaultStart
+, initialViewport
 ) where
 
 import Testing.GameTypes
@@ -25,14 +26,16 @@ import Graphics.Gloss.Data.ViewPort
 import System.Random (random, RandomGen(..), randomRs)
 import Data.Maybe (fromMaybe)
 
+import Debug.Trace
+
 initialPlayer :: Player
 initialPlayer = Player (0, 0) Nothing Nothing
 
 initialMonster :: (Int, Int) -> Monster
 initialMonster pos = Monster pos (Wander WalkUp wanderDist) 4
 
-initialViewport :: ViewPort
-initialViewport = ViewPort { viewPortTranslate = (0, 0), viewPortRotate = 0, viewPortScale = viewportScale }
+initialViewport :: Pos -> ViewPort
+initialViewport (x, y) = ViewPort { viewPortTranslate = (fromIntegral x, fromIntegral y), viewPortRotate = 0, viewPortScale = viewportScale }
 
 worldWidth :: Int
 worldWidth = 2560
@@ -81,7 +84,7 @@ defaultStart = StartState { gameStatusSignal = Start
                           , playerSignal = initialPlayer
                           , monsterPos = Nothing
                           , animationSignal = Nothing
-                          , viewportSignal = initialViewport }
+                          , viewportTranslateSignal = (0, 0) }
 
 {-
 -- GlossState needs to be exported
@@ -179,7 +182,7 @@ playLevel windowSize directionKey shootKey randomGenerator startState level@(Lev
     levelOver <- memo (levelEnds <$> player <*> monsters)
     levelOver' <- delay Nothing levelOver
     animation <- transfer (animationSignal startState) (endAnimation level) levelOver
-    viewport <- transfer (viewportSignal startState) viewPortMove player
+    viewport <- transfer (initialViewport (viewportTranslateSignal startState)) viewPortMove player
 
     shoot <- edgify shootKey
     let bolt direction range startPosition = stateful (Bolt startPosition direction range False) moveBolt
