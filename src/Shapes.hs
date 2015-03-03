@@ -7,12 +7,15 @@ import System.Exit ( exitSuccess )
 import Control.Concurrent (threadDelay)
 import Control.Monad (when, unless)
 
+import qualified Graphics.UI.GLUT as GLUT
+
 windowWidth, windowHeight :: Int
 windowWidth  = 640
 windowHeight = 480
 
 main :: IO ()
 main = do
+    (_,_) <- GLUT.getArgsAndInitialize
     glossState <- initState
     withWindow windowWidth windowHeight "Game-Demo" $ \win -> do
           loop glossState win

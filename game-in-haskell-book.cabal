@@ -27,6 +27,7 @@ executable shapes-demo
                      , bytestring
                      , gloss == 1.9.2.1
                      , gloss-rendering == 1.9.2.1
+                     , GLUT == 2.5.1.1
   hs-source-dirs:      src
   default-language:    Haskell2010
 
@@ -53,6 +54,7 @@ executable frp-demo
                      , gloss-rendering == 1.9.2.1
                      , elerea == 2.8.0
                      , random == 1.1
+                     , GLUT == 2.5.1.1
   hs-source-dirs:      src
   default-language:    Haskell2010
 
@@ -67,6 +69,7 @@ executable animated
                      , gloss-rendering == 1.9.2.1
                      , elerea == 2.8.0
                      , random == 1.1
+                     , GLUT == 2.5.1.1
   hs-source-dirs:      src
   default-language:    Haskell2010
 
@@ -82,6 +85,7 @@ executable music
                      , elerea == 2.8.0
                      , random == 1.1
                      , ALUT == 2.3.0.2
+                     , GLUT == 2.5.1.1
   hs-source-dirs:      src
   default-language:    Haskell2010
 
@@ -120,6 +124,7 @@ executable extended
                      , random == 1.1
                      , ALUT == 2.3.0.2
                      , containers
+                     , GLUT == 2.5.1.1
   hs-source-dirs:      src
   default-language:    Haskell2010
 
