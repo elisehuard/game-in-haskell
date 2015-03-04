@@ -25,6 +25,9 @@ import Data.Foldable (foldl')
 import Graphics.Gloss.Data.ViewPort
 import System.Random (random, RandomGen(..), randomRs)
 import Data.Maybe (fromMaybe)
+import Data.Aeson
+import Data.Time.Clock
+import qualified Data.ByteString.Lazy as B (writeFile)
 
 import Debug.Trace
 
@@ -92,12 +95,13 @@ defaultStart = StartState { gameStatusSignal = Start
 --   pull request required
 -}
 -- expected:
-hunted win windowSize directionKey shootKey randomGenerator textures glossState sounds startState = mdo
+hunted win windowSize directionKey shootKey randomGenerator textures glossState sounds startState snapshotKey = mdo
   let mkGame = playGame windowSize directionKey shootKey randomGenerator startState
   (gameState, gameTrigger) <- switcher $ mkGame <$> gameStatus'
   gameStatus <- transfer (gameStatusSignal startState) gameProgress gameTrigger
   gameStatus' <- delay (gameStatusSignal startState) gameStatus
-  return $ outputFunction win glossState textures sounds <$> gameState
+  snapshot <- edge snapshotKey
+  return $ outputFunction win glossState textures sounds <$> gameState <*> snapshot
   where gameProgress False s      = s
         gameProgress True  Start  = InGame
         gameProgress True  InGame = Start
@@ -209,6 +213,7 @@ playLevel windowSize directionKey shootKey randomGenerator startState level@(Lev
                                   <*> score
                                   <*> animation
                                   <*> windowSize
+                                  <*> pure level
         soundState  = SoundState <$> statusChange
                                  <*> playerScreams
                                  <*> monsterIsHunting
@@ -272,6 +277,12 @@ hasHit :: Monster -> Bolt -> Bool
 hasHit (Monster (xmon, ymon) _ _) (Bolt (x, y) _ _ _)
   | dist (xmon, ymon) (x, y) < ((monsterSize `quot` 4)^2) = True
   | otherwise = False
+
+edge :: Signal Bool
+     -> SignalGen (Signal Bool)
+edge s = do
+    s' <- delay False s
+    return $ s' >>= \x -> if x then return False else s
 
 edgify :: Signal (Bool, Bool, Bool, Bool)
        -> SignalGen (Signal (Bool, Bool, Bool, Bool))
@@ -445,5 +456,19 @@ monitorStatusChange ((Monster _ (Wander _ _) _), (Monster _ (Hunting _) _)) = Ju
 monitorStatusChange _ = Nothing
 
 -- output functions
-outputFunction window glossState textures sounds (GameState renderState soundState) =
-  (renderFrame window glossState textures (worldWidth, worldHeight) renderState) >> playSounds sounds soundState
+outputFunction window glossState textures sounds (GameState renderState soundState) snapshot =
+  (renderFrame window glossState textures (worldWidth, worldHeight) renderState) >> playSounds sounds soundState >> recordState snapshot renderState
+
+recordState False _ = return ()
+recordState True (StartRenderState _) = return () -- no point in snapshotting the start of the game?
+recordState True (RenderState player monsters _ viewport _ lives score animation windowSize levelCount) = do
+  timestamp <- getCurrentTime
+  B.writeFile ("startFile" ++ show timestamp) $
+    encode (StartState { gameStatusSignal = InGame
+                       , levelCountSignal = levelCount
+                       , livesSignal = lives
+                       , scoreSignal = score
+                       , playerSignal = player
+                       , monsterPos = Just $ map (\(Monster p _ _) -> p) monsters
+                       , animationSignal = animation
+                       , viewportTranslateSignal = (\(x,y) -> (round x, round y)) $ viewPortTranslate viewport })

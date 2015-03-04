@@ -41,6 +41,7 @@ getStartState opts = if optTesting opts
 main :: IO ()
 main = runCommand $ \opts _ -> do
     startState <- getStartState opts
+    (snapshot, snapshotSink) <- external False
     (directionKey, directionKeySink) <- external (False, False, False, False)
     (shootKey, shootKeySink) <- external (False, False, False, False)
     (windowSize,windowSizeSink) <- external (fromIntegral width, fromIntegral height)
@@ -51,9 +52,9 @@ main = runCommand $ \opts _ -> do
       withSound $ \_ _ -> do
           sounds <- loadSounds
           backgroundMusic (backgroundTune sounds)
-          network <- start $ hunted win windowSize directionKey shootKey randomGenerator textures glossState sounds startState
+          network <- start $ hunted win windowSize directionKey shootKey randomGenerator textures glossState sounds startState snapshot
           fix $ \loop -> do
-               readInput win directionKeySink shootKeySink
+               readInput win directionKeySink shootKeySink snapshotSink
                join network
                threadDelay 20000
                esc <- exitKeyPressed win

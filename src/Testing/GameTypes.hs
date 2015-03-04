@@ -67,7 +67,8 @@ data RenderState = RenderState { renderState_player :: Player
                                , renderState_lives :: Int
                                , renderState_score :: Int
                                , renderState_animation :: Maybe Animation
-                               , renderState_windowSize :: (Int, Int) }
+                               , renderState_windowSize :: (Int, Int)
+                               , renderState_levelCount :: LevelStatus }
                  | StartRenderState (Int, Int)
 data SoundState = SoundState { mood :: (Maybe StatusChange)
                              , playerScreams :: Bool

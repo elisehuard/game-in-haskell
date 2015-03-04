@@ -89,7 +89,8 @@ renderFrame window
                          lives
                          score
                          mbAnimation
-                         dimensions) = do
+                         dimensions
+                         _ ) = do
    displayPicture dimensions black glossState (viewPortScale viewport) $
      Pictures $ animation mbAnimation dimensions $ gameOngoing gameOver lives (texts textures) $ gameStats lives score dimensions $
                              [ uncurry translate (viewPortTranslate viewport) $ tiledBackground (background textures) worldWidth worldHeight

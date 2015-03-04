@@ -123,6 +123,7 @@ library
                      , containers
                      , bytestring
                      , aeson == 0.8.0.2
+                     , time
   hs-source-dirs:      src
   default-language:    Haskell2010
 
@@ -141,6 +142,7 @@ executable testing
                      , options == 1.2.1.1
                      , aeson == 0.8.0.2
                      , bytestring
+                     , time
   ghc-options:         -Wall
   hs-source-dirs:      src
   default-language:    Haskell2010

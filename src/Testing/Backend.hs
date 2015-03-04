@@ -40,18 +40,20 @@ isPress KeyState'Pressed   = True
 isPress KeyState'Repeating = True
 isPress _                  = False
 
-readInput :: Window -> ((Bool, Bool, Bool, Bool) -> IO ()) -> ((Bool, Bool, Bool, Bool) -> IO ()) -> IO ()
-readInput window directionKeySink shootKeySink = do
+readInput :: Window -> ((Bool, Bool, Bool, Bool) -> IO ()) -> ((Bool, Bool, Bool, Bool) -> IO ()) -> (Bool -> IO ()) -> IO ()
+readInput window directionKeySink shootKeySink snapshotSink = do
     pollEvents
-    l <- keyIsPressed window Key'Left
-    r <- keyIsPressed window Key'Right
-    u <- keyIsPressed window Key'Up
-    d <- keyIsPressed window Key'Down
-    directionKeySink (l, r, u, d)
+    directionKeySink =<< (,,,) <$> keyIsPressed window Key'Left
+                               <*> keyIsPressed window Key'Right
+                               <*> keyIsPressed window Key'Up
+                               <*> keyIsPressed window Key'Down
     shootKeySink =<< (,,,) <$> keyIsPressed window Key'A
                            <*> keyIsPressed window Key'D
                            <*> keyIsPressed window Key'W
                            <*> keyIsPressed window Key'S
+    recording <- keyIsPressed window Key'R
+    snapshotSink recording
+    --endRecording <- keyIsPressed window Key'E
 
 exitKeyPressed :: Window -> IO Bool
 exitKeyPressed window = keyIsPressed window Key'Escape
