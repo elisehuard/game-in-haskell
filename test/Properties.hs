@@ -15,7 +15,7 @@ import Testing.Internals.Game
 
 prop_insideLimits move player = not $ (\p -> outsideOfLimits (worldWidth, worldHeight) p playerSize)
                                     $ position
-                                    $ movePlayer playerSpeed (worldWidth, worldHeight) move Nothing (False, False, False, False) player
+                                    $ movePlayer playerSpeed (worldWidth, worldHeight) move Nothing (False, False, False, False) Nothing player
                                 where types = (move :: (Bool, Bool, Bool, Bool), player :: Player)
 
 instance Arbitrary Player where

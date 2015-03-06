@@ -29,8 +29,6 @@ import Data.Aeson
 import Data.Time.Clock
 import qualified Data.ByteString.Lazy as B (writeFile)
 
-import Debug.Trace
-
 initialPlayer :: Player
 initialPlayer = Player (0, 0) Nothing Nothing
 
@@ -181,7 +179,7 @@ playLevel windowSize directionKey shootKey randomGenerator startState commands l
         randomHeights = take n $ randomRs ((-worldWidth) `quot` 2 + monsterSize `quot` 2, (worldWidth `quot` 2) - monsterSize `quot` 2) randomGenerator :: [Int]
         monsterPositions = zip randomWidths randomHeights
         startMonsterPositions = fromMaybe monsterPositions (monsterPos startState)
-    player <- transfer3 initialPlayer (movePlayer playerSpeed worldDimensions) directionKey levelOver' shootKey
+    player <- transfer4 initialPlayer (movePlayer playerSpeed worldDimensions) directionKey levelOver' shootKey commands
     randomNumber <- stateful (undefined, randomGenerator) nextRandom
     hits <- memo (fmap <$> (monsterHits <$> bolts') <*> monsters')
     monsters <- transfer4 (fmap initialMonster startMonsterPositions) (monsterWanderings worldDimensions) player randomNumber levelOver' hits
@@ -322,10 +320,12 @@ movePlayer :: Int
            -> (Bool, Bool, Bool, Bool)
            -> Maybe Ending
            -> (Bool, Bool, Bool, Bool)
+           -> Maybe Command
            -> Player
            -> Player
-movePlayer _ _ _ (Just _) _ player = player
-movePlayer increment dimensions direction Nothing shootDir player
+movePlayer _ _ _ _ _ (Just (PlayerPosCommand pos)) player = player {position = pos} -- override
+movePlayer _ _ _ (Just _) _ _ player = player
+movePlayer increment dimensions direction Nothing shootDir _ player
          | outsideOfLimits dimensions (position (move direction shootDir player increment)) playerSize = player
          | otherwise = move direction shootDir player increment
 

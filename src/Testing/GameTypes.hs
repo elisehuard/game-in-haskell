@@ -118,4 +118,5 @@ instance FromJSON StartState
 instance ToJSON StartState
 
 data Command = LivesCommand Int
-               deriving Show
+             | PlayerPosCommand (Int, Int)
+               deriving (Show, Eq)
