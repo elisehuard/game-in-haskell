@@ -13,7 +13,12 @@ import Control.Concurrent (MVar, tryTakeMVar)
 import Data.Maybe (isJust)
 import Testing.GameTypes
 
---withWindow :: Int -> Int -> String -> (GLFW.Window -> IO ()) -> IO ()
+withWindow :: Int
+            -> Int
+            -> ((Int, Int) -> IO ())
+            -> String
+            -> (Window -> IO ())
+            -> IO ()
 withWindow width height windowSizeSink title f = do
     GLFW.setErrorCallback $ Just simpleErrorCallback
     r <- GLFW.init
