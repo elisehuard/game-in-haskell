@@ -111,6 +111,7 @@ library
                      , Testing.Sound
                      , Testing.Graphics
                      , Testing.Backend
+                     , Testing.CommandLine
   -- other-extensions:
   ghc-options:       -Wall
   build-depends:       base >=4.7 && <4.8
@@ -124,6 +125,8 @@ library
                      , bytestring
                      , aeson == 0.8.0.2
                      , time
+                     , haskeline == 0.7.1.3
+                     , transformers
   hs-source-dirs:      src
   default-language:    Haskell2010
 
@@ -143,6 +146,8 @@ executable testing
                      , aeson == 0.8.0.2
                      , bytestring
                      , time
+                     , haskeline == 0.7.1.3
+                     , transformers
   ghc-options:         -Wall
   hs-source-dirs:      src
   default-language:    Haskell2010

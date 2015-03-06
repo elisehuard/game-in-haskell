@@ -9,6 +9,9 @@ module Testing.Backend (
 import "GLFW-b" Graphics.UI.GLFW as GLFW
 import Control.Monad (when)
 import Control.Applicative ((<$>), (<*>))
+import Control.Concurrent (MVar, tryTakeMVar)
+import Data.Maybe (isJust)
+import Testing.GameTypes
 
 --withWindow :: Int -> Int -> String -> (GLFW.Window -> IO ()) -> IO ()
 withWindow width height windowSizeSink title f = do
@@ -40,8 +43,14 @@ isPress KeyState'Pressed   = True
 isPress KeyState'Repeating = True
 isPress _                  = False
 
-readInput :: Window -> ((Bool, Bool, Bool, Bool) -> IO ()) -> ((Bool, Bool, Bool, Bool) -> IO ()) -> (Bool -> IO ()) -> IO ()
-readInput window directionKeySink shootKeySink snapshotSink = do
+readInput :: Window
+          -> ((Bool, Bool, Bool, Bool) -> IO ())
+          -> ((Bool, Bool, Bool, Bool) -> IO ())
+          -> (Bool -> IO ())
+          -> (Maybe Command -> IO ())
+          -> MVar Command
+          -> IO ()
+readInput window directionKeySink shootKeySink snapshotSink commandSink commandVar = do
     pollEvents
     directionKeySink =<< (,,,) <$> keyIsPressed window Key'Left
                                <*> keyIsPressed window Key'Right
@@ -53,6 +62,9 @@ readInput window directionKeySink shootKeySink snapshotSink = do
                            <*> keyIsPressed window Key'S
     recording <- keyIsPressed window Key'R
     snapshotSink recording
+    mbCommand <- tryTakeMVar commandVar
+    when (isJust mbCommand) $ print mbCommand
+    commandSink mbCommand
     --endRecording <- keyIsPressed window Key'E
 
 exitKeyPressed :: Window -> IO Bool

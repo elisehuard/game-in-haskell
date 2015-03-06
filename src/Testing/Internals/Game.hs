@@ -95,8 +95,8 @@ defaultStart = StartState { gameStatusSignal = Start
 --   pull request required
 -}
 -- expected:
-hunted win windowSize directionKey shootKey randomGenerator textures glossState sounds startState snapshotKey = mdo
-  let mkGame = playGame windowSize directionKey shootKey randomGenerator startState
+hunted win windowSize directionKey shootKey randomGenerator textures glossState sounds startState snapshotKey commands = mdo
+  let mkGame = playGame windowSize directionKey shootKey randomGenerator startState commands
   (gameState, gameTrigger) <- switcher $ mkGame <$> gameStatus'
   gameStatus <- transfer (gameStatusSignal startState) gameProgress gameTrigger
   gameStatus' <- delay (gameStatusSignal startState) gameStatus
@@ -113,21 +113,22 @@ playGame :: RandomGen t =>
          -> Signal (Bool, Bool, Bool, Bool)
          -> t
          -> StartState
+         -> Signal (Maybe Command)
          -> GameStatus
          -> SignalGen (Signal GameState, Signal Bool)
 -- start game when pressing s
-playGame windowSize _ shootKey _ _ Start = mdo
+playGame windowSize _ shootKey _ _ _ Start = mdo
     let startGame = sIsPressed <$> shootKey
         renderState = StartRenderState <$> windowSize
     return (GameState <$> renderState <*> pure StartSoundState, startGame)
     where sIsPressed (_,_,_,s) = s
 
 -- bool should be gameOver
-playGame windowSize directionKey shootKey randomGenerator startState InGame = mdo
-  (gameState, levelTrigger) <- switcher $ playLevel windowSize directionKey shootKey randomGenerator startState <$> levelCount' <*> score' <*> lives'
+playGame windowSize directionKey shootKey randomGenerator startState commands InGame = mdo
+  (gameState, levelTrigger) <- switcher $ playLevel windowSize directionKey shootKey randomGenerator startState commands <$> levelCount' <*> score' <*> lives'
   levelCount <- transfer2 (levelCountSignal startState) levelProgression gameState levelTrigger
   levelCount' <- delay (levelCountSignal startState) levelCount
-  lives <- transfer2 (livesSignal startState) decrementLives gameState levelTrigger
+  lives <- transfer3 (livesSignal startState) decrementLives gameState levelTrigger commands
   lives' <- delay (livesSignal startState) lives
   score <- memo (stateScore <$> gameState)
   score' <- delay (scoreSignal startState) score
@@ -137,8 +138,11 @@ playGame windowSize directionKey shootKey randomGenerator startState InGame = md
         isGameOver (GameState (StartRenderState _) _) = False
         stateScore (GameState (RenderState {renderState_score = s}) _) = s
         stateScore (GameState (StartRenderState _) _) = 0
-        decrementLives (GameState (RenderState {renderState_ending = Just Lose}) _) True l = l - 1
-        decrementLives (GameState _ _) _ l = l
+        decrementLives _ _ (Just (LivesCommand num)) l = num -- override
+        decrementLives (GameState (RenderState {renderState_ending = Just Lose}) _) True _ l = l - 1
+        decrementLives (GameState _ _) _ _ l = l
+
+
 
 -- level progression if triggered AND the player won
 levelProgression :: GameState -> Bool -> LevelStatus -> LevelStatus
@@ -170,7 +174,7 @@ playLevel :: RandomGen t =>
           -> Int
           -> SignalGen (Signal GameState, Signal Bool)
 -}
-playLevel windowSize directionKey shootKey randomGenerator startState level@(Level n) currentScore lives = mdo
+playLevel windowSize directionKey shootKey randomGenerator startState commands level@(Level n) currentScore lives = mdo
     -- render signals
     let worldDimensions = (worldWidth, worldHeight)
         randomWidths = take n $ randomRs ((-worldWidth) `quot` 2 + monsterSize `quot` 2, (worldWidth `quot` 2) - monsterSize `quot` 2) randomGenerator :: [Int]
@@ -202,14 +206,17 @@ playLevel windowSize directionKey shootKey randomGenerator startState level@(Lev
     playerScreams <- Elerea.until ((== (Just Lose)) <$> levelOver)
     monsterScreams <- Elerea.until ((== (Just Win)) <$> levelOver)
 
-
+    let actualLives = overridingLives lives <$> commands <*> actualLives'
+        overridingLives lives (Just (LivesCommand num)) _ = num
+        overridingLives _ _ previousLives = previousLives
+    actualLives' <- delay lives actualLives
     let monsterIsHunting = (foldr (||) False) <$> (fmap <$> (stillHunting <$> levelOver) <*> monsters)
         renderState = RenderState <$> player
                                   <*> monsters
                                   <*> levelOver
                                   <*> viewport
                                   <*> bolts
-                                  <*> pure lives
+                                  <*> actualLives
                                   <*> score
                                   <*> animation
                                   <*> windowSize

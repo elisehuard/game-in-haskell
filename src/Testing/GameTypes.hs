@@ -117,3 +117,5 @@ data StartState = StartState { gameStatusSignal :: GameStatus
 instance FromJSON StartState
 instance ToJSON StartState
 
+data Command = LivesCommand Int
+               deriving Show
