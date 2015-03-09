@@ -13,14 +13,17 @@ import Testing.Internals.Game
 -- movePlayer always stays inside the playing field
 
 
-prop_insideLimits move player = not $ (\p -> outsideOfLimits (worldWidth, worldHeight) p playerSize)
-                                    $ position
-                                    $ movePlayer playerSpeed (worldWidth, worldHeight) move Nothing (False, False, False, False) Nothing player
-                                where types = (move :: (Bool, Bool, Bool, Bool), player :: Player)
+prop_insideLimits move player@(Player (x,y) _ _) =
+    (x > ((-worldWidth) `quot` 2 + playerSize `quot` 2)) &&
+    (x < (worldWidth `quot` 2 - playerSize `quot` 2)) &&
+    (y > ((-worldHeight) `quot` 2 + playerSize `quot` 2)) &&
+    (y < (worldHeight `quot` 2 - playerSize `quot` 2)) ==>
+        not $ (\p -> outsideOfLimits (worldWidth, worldHeight) p playerSize)
+            $ position
+            $ movePlayer playerSpeed (worldWidth, worldHeight) move Nothing (False, False, False, False) Nothing player
 
 instance Arbitrary Player where
-  arbitrary = Player <$> ((,) <$> choose ((-worldWidth) `quot` 2 + playerSize `quot` 2, worldWidth `quot` 2 - playerSize `quot` 2)
-                              <*> choose ((-worldHeight) `quot` 2 + playerSize `quot` 2, worldHeight `quot` 2 - playerSize `quot` 2))
+  arbitrary = Player <$> arbitrary
                      <*> arbitrary
                      <*> arbitrary
 
