@@ -19,6 +19,7 @@ import Testing.Sound
 import Testing.Graphics
 
 import FRP.Elerea.Simple as Elerea
+import Control.Monad (when)
 import Control.Applicative ((<$>), (<*>), liftA2, pure)
 import Data.Maybe (mapMaybe)
 import Data.Foldable (foldl')
@@ -27,7 +28,8 @@ import System.Random (random, RandomGen(..), randomRs)
 import Data.Maybe (fromMaybe)
 import Data.Aeson
 import Data.Time.Clock
-import qualified Data.ByteString.Lazy as B (writeFile)
+import qualified Data.ByteString.Lazy as B (appendFile, writeFile, concat)
+import qualified Data.ByteString.Lazy.Char8 as BC (singleton)
 
 initialPlayer :: Player
 initialPlayer = Player (0, 0) Nothing Nothing
@@ -93,16 +95,27 @@ defaultStart = StartState { gameStatusSignal = Start
 --   pull request required
 -}
 -- expected:
-hunted win windowSize directionKey shootKey randomGenerator textures glossState sounds startState snapshotKey commands = mdo
+hunted win windowSize directionKey shootKey randomGenerator textures glossState sounds startState snapshotSig recordKey commands = mdo
   let mkGame = playGame windowSize directionKey shootKey randomGenerator startState commands
   (gameState, gameTrigger) <- switcher $ mkGame <$> gameStatus'
   gameStatus <- transfer (gameStatusSignal startState) gameProgress gameTrigger
   gameStatus' <- delay (gameStatusSignal startState) gameStatus
-  snapshot <- edge snapshotKey
-  return $ outputFunction win glossState textures sounds <$> gameState <*> snapshot
+
+  snapshot <- edge (snd <$> snapshotSig)
+  -- transform startRecording and endRecording in an recording signal
+  startRecording <- edge ((\(_,s,_) -> s) <$> recordKey)
+  endRecording <- edge ((\(_,_,s) -> s) <$> recordKey)
+  let ts = (\(s, _, _) -> "data/log-" ++ show s) <$> recordKey
+  recording <- transfer3 ("", False) isItRecording startRecording endRecording ts
+  let snapshotData  = (,) <$> (fst <$> snapshotSig) <*> ((||) <$> snapshot <*> startRecording)
+
+  return $ outputFunction win glossState textures sounds <$> gameState <*> snapshotData <*> recording <*> directionKey <*> shootKey
   where gameProgress False s      = s
         gameProgress True  Start  = InGame
         gameProgress True  InGame = Start
+        isItRecording True _    newName (_, False)   = (newName, True) -- start recording
+        isItRecording _    True _       (name, True)    = (name, False) -- end recording
+        isItRecording _    _    _       (name, current) = (name, current) -- ongoing
 
 
 playGame :: RandomGen t =>
@@ -463,14 +476,17 @@ monitorStatusChange ((Monster _ (Wander _ _) _), (Monster _ (Hunting _) _)) = Ju
 monitorStatusChange _ = Nothing
 
 -- output functions
-outputFunction window glossState textures sounds (GameState renderState soundState) snapshot =
-  (renderFrame window glossState textures (worldWidth, worldHeight) renderState) >> playSounds sounds soundState >> recordState snapshot renderState
+outputFunction window glossState textures sounds (GameState renderState soundState) snapshot record directionKey shootKey =
+  (renderFrame window glossState textures (worldWidth, worldHeight) renderState) >>
+    playSounds sounds soundState >>
+    recordState snapshot renderState >>
+    recordEvents record directionKey shootKey
 
-recordState False _ = return ()
-recordState True (StartRenderState _) = return () -- no point in snapshotting the start of the game?
-recordState True (RenderState player monsters _ viewport _ lives score animation windowSize levelCount) = do
-  timestamp <- getCurrentTime
-  B.writeFile ("startFile" ++ show timestamp) $
+recordState :: (Int, Bool) -> RenderState -> IO ()
+recordState (_, False) _ = return ()
+recordState (_, True) (StartRenderState _) = return () -- no point in snapshotting the start of the game?
+recordState (ts, True) (RenderState player monsters _ viewport _ lives score animation windowSize levelCount) =
+  B.writeFile ("data/startFile" ++ show ts) $
     encode (StartState { gameStatusSignal = InGame
                        , levelCountSignal = levelCount
                        , livesSignal = lives
@@ -479,3 +495,11 @@ recordState True (RenderState player monsters _ viewport _ lives score animation
                        , monsterPos = Just $ map (\(Monster p _ _) -> p) monsters
                        , animationSignal = animation
                        , viewportTranslateSignal = (\(x,y) -> (round x, round y)) $ viewPortTranslate viewport })
+
+recordEvents :: (String, Bool)
+             -> (Bool, Bool, Bool, Bool)
+             -> (Bool, Bool, Bool, Bool)
+             -> IO ()
+recordEvents (name, recording) directionKey shootKey = when recording $ do
+  B.appendFile name $
+    B.concat [encode (ExternalInputs directionKey shootKey), BC.singleton '\n']

@@ -117,6 +117,12 @@ data StartState = StartState { gameStatusSignal :: GameStatus
 instance FromJSON StartState
 instance ToJSON StartState
 
+data ExternalInputs = ExternalInputs (Bool, Bool, Bool, Bool) (Bool, Bool, Bool, Bool)
+                      deriving (Show, Generic)
+
+instance FromJSON ExternalInputs
+instance ToJSON ExternalInputs
+
 data Command = LivesCommand Int
              | PlayerPosCommand (Int, Int)
                deriving (Show, Eq)

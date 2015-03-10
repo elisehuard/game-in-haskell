@@ -12,6 +12,7 @@ import Control.Applicative ((<$>), (<*>))
 import Control.Concurrent (MVar, tryTakeMVar)
 import Data.Maybe (isJust)
 import Testing.GameTypes
+import Data.Time.Clock.POSIX
 
 withWindow :: Int
             -> Int
@@ -51,11 +52,12 @@ isPress _                  = False
 readInput :: Window
           -> ((Bool, Bool, Bool, Bool) -> IO ())
           -> ((Bool, Bool, Bool, Bool) -> IO ())
-          -> (Bool -> IO ())
+          -> ((Int, Bool) -> IO ())
+          -> ((Int, Bool, Bool) -> IO ())
           -> (Maybe Command -> IO ())
           -> MVar Command
           -> IO ()
-readInput window directionKeySink shootKeySink snapshotSink commandSink commandVar = do
+readInput window directionKeySink shootKeySink snapshotSink recordSink commandSink commandVar = do
     pollEvents
     directionKeySink =<< (,,,) <$> keyIsPressed window Key'Left
                                <*> keyIsPressed window Key'Right
@@ -65,12 +67,18 @@ readInput window directionKeySink shootKeySink snapshotSink commandSink commandV
                            <*> keyIsPressed window Key'D
                            <*> keyIsPressed window Key'W
                            <*> keyIsPressed window Key'S
-    recording <- keyIsPressed window Key'R
-    snapshotSink recording
+
+    startRecording <- keyIsPressed window Key'R
+    endRecording <- keyIsPressed window Key'E
+    timestamp <- round `fmap` getPOSIXTime
+
+    snapshotting <- keyIsPressed window Key'T
+    snapshotSink (timestamp, snapshotting)
+    recordSink (timestamp, startRecording, endRecording)
+
     mbCommand <- tryTakeMVar commandVar
     when (isJust mbCommand) $ print mbCommand
     commandSink mbCommand
-    --endRecording <- keyIsPressed window Key'E
 
 exitKeyPressed :: Window -> IO Bool
 exitKeyPressed window = keyIsPressed window Key'Escape

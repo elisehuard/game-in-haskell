@@ -13,7 +13,7 @@ import FRP.Elerea.Simple as Elerea
 import Testing.GameTypes
 import Options
 import Control.Applicative ((<*>), pure)
-import Control.Concurrent (forkIO, MVar, newEmptyMVar)
+import Control.Concurrent (forkIO, newEmptyMVar)
 import Data.Aeson
 import Data.Maybe (fromMaybe)
 import qualified Data.ByteString.Lazy as B (readFile)
@@ -26,22 +26,22 @@ height :: Int
 height = 480
 
 data MainOptions = MainOptions {
-  optTesting :: Bool
+  optLoadStart :: Bool
 , optStartFile :: String
 , optInteractive :: Bool
 }
 
 instance Options MainOptions where
   defineOptions = pure MainOptions
-                <*> simpleOption "testing" False
-                      "testing configuration"
+                <*> simpleOption "load-start" False
+                      "load start state configuration"
                 <*> simpleOption "start-state" ""
                       "file containing start state"
                 <*> simpleOption "interactive" False
                       "start an interactive session"
 
 getStartState :: MainOptions -> IO StartState
-getStartState opts = if optTesting opts
+getStartState opts = if optLoadStart opts
                        then fmap (\mb -> fromMaybe defaultStart mb) $ fmap decode $ B.readFile (optStartFile opts)
                        else return defaultStart
 
@@ -52,7 +52,8 @@ main = runCommand $ \opts _ -> do
     when (optInteractive opts) $ do
       _ <- forkIO (interactiveCommandLine commandVar)
       return ()
-    (snapshot, snapshotSink) <- external False
+    (snapshot, snapshotSink) <- external (0,False)
+    (record, recordSink) <- external (0, False, False)
     (commands, commandSink) <- external Nothing
     (directionKey, directionKeySink) <- external (False, False, False, False)
     (shootKey, shootKeySink) <- external (False, False, False, False)
@@ -64,9 +65,20 @@ main = runCommand $ \opts _ -> do
       withSound $ \_ _ -> do
           sounds <- loadSounds
           backgroundMusic (backgroundTune sounds)
-          network <- start $ hunted win windowSize directionKey shootKey randomGenerator textures glossState sounds startState snapshot commands
+          network <- start $ hunted win
+                                    windowSize
+                                    directionKey
+                                    shootKey
+                                    randomGenerator
+                                    textures
+                                    glossState
+                                    sounds
+                                    startState
+                                    snapshot
+                                    record
+                                    commands
           fix $ \loop -> do
-               readInput win directionKeySink shootKeySink snapshotSink commandSink commandVar
+               readInput win directionKeySink shootKeySink snapshotSink recordSink commandSink commandVar
                join network
                threadDelay 20000
                esc <- exitKeyPressed win
