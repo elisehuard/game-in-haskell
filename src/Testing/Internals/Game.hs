@@ -502,4 +502,4 @@ recordEvents :: (String, Bool)
              -> IO ()
 recordEvents (name, recording) directionKey shootKey = when recording $ do
   B.appendFile name $
-    B.concat [encode (ExternalInputs directionKey shootKey), BC.singleton '\n']
+    B.concat [encode (ExternalInput directionKey shootKey), BC.singleton '\n']

@@ -2,6 +2,7 @@
 module Testing.Backend (
   withWindow
 , readInput
+, replayInput
 , exitKeyPressed
 , swapBuffers
 ) where
@@ -79,6 +80,27 @@ readInput window directionKeySink shootKeySink snapshotSink recordSink commandSi
     mbCommand <- tryTakeMVar commandVar
     when (isJust mbCommand) $ print mbCommand
     commandSink mbCommand
+
+replayInput :: Window
+            -> ExternalInput
+            -> ((Bool, Bool, Bool, Bool) -> IO ())
+            -> ((Bool, Bool, Bool, Bool) -> IO ())
+            -> ((Int, Bool) -> IO ())
+            -> ((Int, Bool, Bool) -> IO ())
+            -> (Maybe Command -> IO ())
+            -> IO ()
+replayInput win
+            (ExternalInput directionKey shootKey)
+            directionKeySink
+            shootKeySink
+            snapshotSink
+            recordSink
+            commandSink = do
+  directionKeySink directionKey
+  shootKeySink shootKey
+  snapshotSink (0, False)
+  recordSink (0, False, False)
+  commandSink Nothing
 
 exitKeyPressed :: Window -> IO Bool
 exitKeyPressed window = keyIsPressed window Key'Escape
