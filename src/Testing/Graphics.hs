@@ -1,3 +1,4 @@
+{-# LANGUAGE RecordWildCards #-}
 {-# OPTIONS_GHC -fno-warn-type-defaults #-}
 module Testing.Graphics (
   loadTextures
@@ -50,12 +51,16 @@ loadTextures = do
                           <*> loadBMP "images/bolt-right.bmp"
     backgroundTexture <- loadBMP "images/background-tile.bmp"
     gameOverText <- loadBMP "images/game-over.bmp"
+    recordingText <- loadBMP "images/recording.bmp"
     return Textures { background = backgroundTexture
                     , playerTextures = playerTextureSet
                     , monsterWalking = monsterWalkingSet
                     , monsterHunting = monsterHuntingSet
                     , deadMonster = deadMonsterTexture
-                    , texts = Map.singleton "game-over" gameOverText
+                    , texts = foldr (\(text, texture) textureMap -> Map.insert text texture textureMap)
+                                    Map.empty
+                                    [ ("recording", recordingText),
+                                      ("game-over", gameOverText) ]
                     , boltTextures = boltSet }
 
 loadWalkingTexture :: String -> IO WalkingTexture
@@ -81,23 +86,17 @@ renderFrame window
             glossState
             textures
             (worldWidth, worldHeight)
-            (RenderState player
-                         monsters
-                         gameOver
-                         viewport
-                         bolts
-                         lives
-                         score
-                         mbAnimation
-                         dimensions
-                         _ ) = do
-   displayPicture dimensions black glossState (viewPortScale viewport) $
-     Pictures $ animation mbAnimation dimensions $ gameOngoing gameOver lives (texts textures) $ gameStats lives score dimensions $
-                             [ uncurry translate (viewPortTranslate viewport) $ tiledBackground (background textures) worldWidth worldHeight
-                             , Pictures $ map (uncurry translate (viewPortTranslate viewport) . (renderBolt (boltTextures textures))) bolts
-                             , renderPlayer player (playerTextures textures)
-                             , uncurry translate (viewPortTranslate viewport) $ Pictures $ map (renderMonster (monsterWalking textures) (monsterHunting textures) (deadMonster textures)) monsters
-                             , uncurry translate (viewPortTranslate viewport) $ Pictures $ map renderHealthBar monsters ]
+            (RenderState {..}) = do
+   displayPicture renderState_windowSize black glossState (viewPortScale renderState_viewport) $
+     Pictures $ animation renderState_animation renderState_windowSize
+              $ gameOngoing renderState_ending renderState_lives (texts textures)
+              $ gameStats renderState_lives renderState_score renderState_windowSize
+              $ recordingDisplay renderState_recording (texts textures) renderState_windowSize $
+                             [ uncurry translate (viewPortTranslate renderState_viewport) $ tiledBackground (background textures) worldWidth worldHeight
+                             , Pictures $ map (uncurry translate (viewPortTranslate renderState_viewport) . (renderBolt (boltTextures textures))) renderState_bolts
+                             , renderPlayer renderState_player (playerTextures textures)
+                             , uncurry translate (viewPortTranslate renderState_viewport) $ Pictures $ map (renderMonster (monsterWalking textures) (monsterHunting textures) (deadMonster textures)) renderState_monster
+                             , uncurry translate (viewPortTranslate renderState_viewport) $ Pictures $ map renderHealthBar renderState_monster ]
    swapBuffers window
 
 renderFrame window glossState _ _ (StartRenderState dimensions) = do
@@ -193,6 +192,11 @@ gameOngoing (Just Lose) 1 textTextures pics =  pics ++ [translate (-50) 0 $ (tex
 gameOngoing (Just Lose) _ _            pics =  pics ++ [Color black $ translate (-100) 0 $ Scale 0.3 0.3 $ Text "Aaargh"]
 gameOngoing (Just Win)  _ _            pics =  pics ++ [Color black $ translate (-100) 0 $ Scale 0.3 0.3 $ Text "You win!"]
 gameOngoing Nothing     _ _            pics =  pics
+
+recordingDisplay :: Bool -> Map.Map String Picture -> (Int, Int) -> [Picture] -> [Picture]
+recordingDisplay True  textTextures (w,h) pics = pics ++ [ translate ((fromIntegral w)/2 - 200) ((-(fromIntegral h))/2 + 60) $ (textTextures Map.! "recording") ]
+recordingDisplay False _            _     pics = pics
+
 
 -- add score and lives
 -- lives are reprented by circles

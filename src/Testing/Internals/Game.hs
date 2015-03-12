@@ -96,7 +96,7 @@ defaultStart = StartState { gameStatusSignal = Start
 -}
 -- expected:
 hunted win windowSize directionKey shootKey randomGenerator textures glossState sounds startState snapshotSig recordKey commands = mdo
-  let mkGame = playGame windowSize directionKey shootKey randomGenerator startState commands
+  let mkGame = playGame windowSize directionKey shootKey randomGenerator startState commands (snd <$> recordingData)
   (gameState, gameTrigger) <- switcher $ mkGame <$> gameStatus'
   gameStatus <- transfer (gameStatusSignal startState) gameProgress gameTrigger
   gameStatus' <- delay (gameStatusSignal startState) gameStatus
@@ -106,10 +106,10 @@ hunted win windowSize directionKey shootKey randomGenerator textures glossState 
   startRecording <- edge ((\(_,s,_) -> s) <$> recordKey)
   endRecording <- edge ((\(_,_,s) -> s) <$> recordKey)
   let ts = (\(s, _, _) -> "data/log-" ++ show s) <$> recordKey
-  recording <- transfer3 ("", False) isItRecording startRecording endRecording ts
+  recordingData <- transfer3 ("", False) isItRecording startRecording endRecording ts
   let snapshotData  = (,) <$> (fst <$> snapshotSig) <*> ((||) <$> snapshot <*> startRecording)
 
-  return $ outputFunction win glossState textures sounds <$> gameState <*> snapshotData <*> recording <*> directionKey <*> shootKey
+  return $ outputFunction win glossState textures sounds <$> gameState <*> snapshotData <*> recordingData <*> directionKey <*> shootKey
   where gameProgress False s      = s
         gameProgress True  Start  = InGame
         gameProgress True  InGame = Start
@@ -125,18 +125,19 @@ playGame :: RandomGen t =>
          -> t
          -> StartState
          -> Signal (Maybe Command)
+         -> Signal Bool
          -> GameStatus
          -> SignalGen (Signal GameState, Signal Bool)
 -- start game when pressing s
-playGame windowSize _ shootKey _ _ _ Start = mdo
+playGame windowSize _ shootKey _ _ _ _ Start = mdo
     let startGame = sIsPressed <$> shootKey
         renderState = StartRenderState <$> windowSize
     return (GameState <$> renderState <*> pure StartSoundState, startGame)
     where sIsPressed (_,_,_,s) = s
 
 -- bool should be gameOver
-playGame windowSize directionKey shootKey randomGenerator startState commands InGame = mdo
-  (gameState, levelTrigger) <- switcher $ playLevel windowSize directionKey shootKey randomGenerator startState commands <$> levelCount' <*> score' <*> lives'
+playGame windowSize directionKey shootKey randomGenerator startState commands recording InGame = mdo
+  (gameState, levelTrigger) <- switcher $ playLevel windowSize directionKey shootKey randomGenerator startState commands recording <$> levelCount' <*> score' <*> lives'
   levelCount <- transfer2 (levelCountSignal startState) levelProgression gameState levelTrigger
   levelCount' <- delay (levelCountSignal startState) levelCount
   lives <- transfer3 (livesSignal startState) decrementLives gameState levelTrigger commands
@@ -174,18 +175,19 @@ switcher levelGen = mdo
         store Nothing x = x
         toMaybe bool x = if bool then Just <$> x else pure Nothing
 
-{-
 playLevel :: RandomGen t =>
              Signal (Int, Int)
           -> Signal (Bool, Bool, Bool, Bool)
           -> Signal (Bool, Bool, Bool, Bool)
           -> t
+          -> StartState
+          -> Signal (Maybe Command)
+          -> Signal Bool
           -> LevelStatus
-          -> Float
+          -> Int
           -> Int
           -> SignalGen (Signal GameState, Signal Bool)
--}
-playLevel windowSize directionKey shootKey randomGenerator startState commands level@(Level n) currentScore lives = mdo
+playLevel windowSize directionKey shootKey randomGenerator startState commands recording level@(Level n) currentScore lives = mdo
     -- render signals
     let worldDimensions = (worldWidth, worldHeight)
         randomWidths = take n $ randomRs ((-worldWidth) `quot` 2 + monsterSize `quot` 2, (worldWidth `quot` 2) - monsterSize `quot` 2) randomGenerator :: [Int]
@@ -232,6 +234,7 @@ playLevel windowSize directionKey shootKey randomGenerator startState commands l
                                   <*> animation
                                   <*> windowSize
                                   <*> pure level
+                                  <*> recording
         soundState  = SoundState <$> statusChange
                                  <*> playerScreams
                                  <*> monsterIsHunting
@@ -485,7 +488,7 @@ outputFunction window glossState textures sounds (GameState renderState soundSta
 recordState :: (Int, Bool) -> RenderState -> IO ()
 recordState (_, False) _ = return ()
 recordState (_, True) (StartRenderState _) = return () -- no point in snapshotting the start of the game?
-recordState (ts, True) (RenderState player monsters _ viewport _ lives score animation windowSize levelCount) =
+recordState (ts, True) (RenderState player monsters _ viewport _ lives score animation windowSize levelCount _) =
   B.writeFile ("data/startFile" ++ show ts) $
     encode (StartState { gameStatusSignal = InGame
                        , levelCountSignal = levelCount
