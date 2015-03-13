@@ -96,6 +96,7 @@ replayInput win
             snapshotSink
             recordSink
             commandSink = do
+  pollEvents
   directionKeySink directionKey
   shootKeySink shootKey
   snapshotSink (0, False)

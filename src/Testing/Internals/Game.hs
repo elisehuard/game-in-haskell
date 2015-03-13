@@ -487,17 +487,21 @@ outputFunction window glossState textures sounds (GameState renderState soundSta
 
 recordState :: (Int, Bool) -> RenderState -> IO ()
 recordState (_, False) _ = return ()
-recordState (_, True) (StartRenderState _) = return () -- no point in snapshotting the start of the game?
-recordState (ts, True) (RenderState player monsters _ viewport _ lives score animation windowSize levelCount _) =
-  B.writeFile ("data/startFile" ++ show ts) $
-    encode (StartState { gameStatusSignal = InGame
-                       , levelCountSignal = levelCount
-                       , livesSignal = lives
-                       , scoreSignal = score
-                       , playerSignal = player
-                       , monsterPos = Just $ map (\(Monster p _ _) -> p) monsters
-                       , animationSignal = animation
-                       , viewportTranslateSignal = (\(x,y) -> (round x, round y)) $ viewPortTranslate viewport })
+recordState (ts, True) renderState =
+  B.writeFile ("data/start-" ++ show ts) $
+    encode $ renderToStartState renderState
+
+renderToStartState :: RenderState -> StartState
+renderToStartState (StartRenderState _) = defaultStart
+renderToStartState (RenderState player monsters _ viewport _ lives score animation _ levelCount _) =
+  StartState { gameStatusSignal = InGame
+             , levelCountSignal = levelCount
+             , livesSignal = lives
+             , scoreSignal = score
+             , playerSignal = player
+             , monsterPos = Just $ map (\(Monster p _ _) -> p) monsters
+             , animationSignal = animation
+             , viewportTranslateSignal = (\(x,y) -> (round x, round y)) $ viewPortTranslate viewport }
 
 recordEvents :: (String, Bool)
              -> (Bool, Bool, Bool, Bool)
