@@ -10,6 +10,8 @@ import Control.Monad (unless, join)
 import Control.Monad.Fix (fix)
 import FRP.Elerea.Simple as Elerea
 
+import qualified Graphics.UI.GLUT as GLUT
+
 width :: Int
 width = 640
 
@@ -18,6 +20,7 @@ height = 480
 
 main :: IO ()
 main = do
+    (_,_) <- GLUT.getArgsAndInitialize
     (directionKey, directionKeySink) <- external (False, False, False, False)
     (shootKey, shootKeySink) <- external (False, False, False, False)
     (windowSize,windowSizeSink) <- external (fromIntegral width, fromIntegral height)

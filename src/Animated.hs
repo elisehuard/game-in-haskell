@@ -12,6 +12,8 @@ import Control.Applicative ((<*>), (<$>))
 import FRP.Elerea.Simple
 import System.Random
 
+import qualified Graphics.UI.GLUT as GLUT
+
 type Pos = Point
 data Player = Player { position :: Pos, movement :: Maybe PlayerMovement }
                deriving Show
@@ -78,6 +80,7 @@ monsterSpeed = 5
 
 main :: IO ()
 main = do
+    (_,_) <- GLUT.getArgsAndInitialize
     (directionKey, directionKeySink) <- external (False, False, False, False)
     randomGenerator <- newStdGen
     glossState <- initState

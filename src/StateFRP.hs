@@ -1,5 +1,6 @@
 {-# LANGUAGE PackageImports, RecursiveDo #-}
 import "GLFW-b" Graphics.UI.GLFW as GLFW
+import qualified Graphics.UI.GLUT as GLUT
 import Graphics.Gloss
 import Graphics.Gloss.Rendering
 import System.Exit ( exitSuccess )
@@ -38,6 +39,7 @@ monsterSpeed = 5
 
 main :: IO ()
 main = do
+    (_,_) <- GLUT.getArgsAndInitialize
     (directionKey, directionKeySink) <- external (False, False, False, False)
     randomGenerator <- newStdGen
     glossState <- initState
