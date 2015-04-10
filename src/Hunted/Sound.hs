@@ -13,6 +13,7 @@ import Sound.ALUT hiding (Static)
 import System.IO ( hPutStrLn, stderr )
 import Data.List (intersperse)
 import Control.Monad (when, unless)
+import Control.Monad.IO.Class (MonadIO(..))
 import Control.Applicative ((<$>), (<*>))
 
 data Sounds = Sounds { backgroundTune :: Source
@@ -23,7 +24,7 @@ data Sounds = Sounds { backgroundTune :: Source
                      , thump :: Source }
 
 -- convenience function to abstract the ALUT context
-withSound :: forall a. Runner a
+withSound :: forall a. Runner IO a
 withSound = withProgNameAndArgs runALUT
 
 -- sounds
