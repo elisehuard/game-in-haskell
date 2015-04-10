@@ -15,10 +15,9 @@ import Options
 import Control.Applicative ((<*>), pure)
 import Control.Concurrent (forkIO, newEmptyMVar)
 import Data.Aeson
-import Data.Maybe (fromMaybe)
+import Data.Maybe (fromMaybe, isJust, fromJust)
 import qualified Data.ByteString.Lazy as B (readFile)
 import qualified Data.ByteString.Lazy.Char8 as BC (lines)
-import System.Console.Haskeline
 
 width :: Int
 width = 640
@@ -27,33 +26,28 @@ height :: Int
 height = 480
 
 data MainOptions = MainOptions {
-  optLoadStart :: Bool
-, optStartFile :: String
+  optStartFile :: Maybe String
 , optInteractive :: Bool
-, optPlayback :: Bool
-, optLog :: String
-}
+, optLog :: Maybe String
+} deriving Show
 
 instance Options MainOptions where
   defineOptions = pure MainOptions
-                <*> simpleOption "load-start" False
-                      "load start state configuration"
-                <*> simpleOption "start-state" ""
+                <*> simpleOption "start-state" Nothing
                       "file containing start state"
                 <*> simpleOption "interactive" False
                       "start an interactive session"
-                <*> simpleOption "playback" False
-                      "play recording files using start state and log files"
-                <*> simpleOption "log" ""
+                <*> simpleOption "log" Nothing
                       "file containing input logs"
 
 getStartState :: MainOptions -> IO StartState
-getStartState opts = if (optLoadStart opts) || (optPlayback opts)
-                       then fmap (\mb -> fromMaybe defaultStart mb) $ fmap decode $ B.readFile (optStartFile opts)
+getStartState opts = if (isJust (optStartFile opts))
+                       then fmap (\mb -> fromMaybe defaultStart mb) $ fmap decode $ B.readFile (fromJust (optStartFile opts))
                        else return defaultStart
 
 main :: IO ()
 main = runCommand $ \opts _ -> do
+    print opts
     startState <- getStartState opts
     commandVar <- newEmptyMVar
     when (optInteractive opts) $ do
@@ -84,19 +78,20 @@ main = runCommand $ \opts _ -> do
                                     snapshot
                                     record
                                     commands
-          if (optPlayback opts)
+          if (isJust (optLog opts))
           then do
-            inputs <- externalInputs (optLog opts)
+            inputs <- externalInputs (fromJust (optLog opts))
             (flip mapM_) inputs $ \input -> do
                 replayInput win input directionKeySink shootKeySink snapshotSink recordSink commandSink
                 join network
                 threadDelay 20000
-          else fix $ \loop -> do
-            readInput win directionKeySink shootKeySink snapshotSink recordSink commandSink commandVar
-            join network
-            threadDelay 20000
-            esc <- exitKeyPressed win
-            unless esc loop
+          else
+            fix $ \loop -> do
+                readInput win directionKeySink shootKeySink snapshotSink recordSink commandSink commandVar
+                join network
+                threadDelay 20000
+                esc <- exitKeyPressed win
+                unless esc loop
           exitSuccess
 
 externalInputs :: String

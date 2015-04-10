@@ -12,7 +12,7 @@ import Testing.Internals.Game
 import Testing.GameTypes
 import Testing.Internals.CommandParser
 
-main = defaultMain [$testGroupGenerator]
+main = $defaultMainGenerator
 
 case_NoBolts = 0 @=? monsterHits []
                                 (Monster (0,0) (Wander WalkUp 2) 2)

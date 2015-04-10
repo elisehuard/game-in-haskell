@@ -38,6 +38,20 @@ Let's add some music and sounds:
 
 ## Chapter 5
 
-Shooting, levels, can increase windowsize, etc
+Shooting (ASDW keys), levels, can increase windowsize, etc
 
     cabal run extended
+
+## Chapter 6
+
+Game with testing enabled
+
+    cabal run testing
+
+run tests
+
+    cabal test
+
+Other options from 
+
+    cabal run testing -- --help
