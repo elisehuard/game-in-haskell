@@ -1,10 +1,11 @@
 {-# LANGUAGE PackageImports #-}
 import "GLFW-b" Graphics.UI.GLFW as GLFW
 import Graphics.Gloss
-import Graphics.Gloss.Rendering
+import Graphics.Gloss.Rendering as RS
 import System.Exit ( exitSuccess )
 import Control.Concurrent (threadDelay)
 import Control.Monad (when, unless)
+import Control.Monad.State.Strict
 
 width, height :: Int
 width  = 640
@@ -23,19 +24,23 @@ main :: IO ()
 main = do
     glossState <- initState
     withWindow width height "Game-Demo" $ \win -> do
-          loop win initialPlayer glossState
+          _ <- runStateT (loop win glossState) initialPlayer
           exitSuccess
-    where loop window state glossState =  do
-            threadDelay 20000
-            pollEvents
-            k <- keyIsPressed window Key'Escape
-            l <- keyIsPressed window Key'Left
-            r <- keyIsPressed window Key'Right
-            u <- keyIsPressed window Key'Up
-            d <- keyIsPressed window Key'Down
-            let newState = movePlayer (l,r,u,d) state 10
-            renderFrame newState window glossState
-            unless k $ loop window newState glossState
+
+loop :: Window -> RS.State -> StateT Player IO ()
+loop window glossState = do
+            lift $ threadDelay 20000
+            lift $ pollEvents
+            k <- lift $keyIsPressed window Key'Escape
+            l <- lift $keyIsPressed window Key'Left
+            r <- lift $keyIsPressed window Key'Right
+            u <- lift $keyIsPressed window Key'Up
+            d <- lift $ keyIsPressed window Key'Down
+            player <- get
+            let newState = movePlayer (l,r,u,d) player 10
+            put newState
+            lift $ renderFrame newState window glossState
+            unless k $ loop window glossState
 
 movePlayer :: (Bool, Bool, Bool, Bool) -> Player -> Float -> Player
 movePlayer direction player increment
