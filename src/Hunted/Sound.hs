@@ -24,7 +24,7 @@ data Sounds = Sounds { backgroundTune :: Source
                      , thump :: Source }
 
 -- convenience function to abstract the ALUT context
-withSound :: forall a. Runner IO a
+withSound :: Runner ()
 withSound = withProgNameAndArgs runALUT
 
 -- sounds
