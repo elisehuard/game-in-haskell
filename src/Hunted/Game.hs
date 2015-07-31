@@ -145,8 +145,8 @@ playLevel windowSize directionKey shootKey randomGenerator level@(Level n) curre
 
     -- render signals
     let worldDimensions = (worldWidth, worldHeight)
-        randomWidths = take n $ randomRs (round ((-worldWidth)/2 + monsterSize/2), round ((worldWidth/2) - monsterSize/2)) randomGenerator :: [Int]
-        randomHeights = take n $ randomRs (round ((-worldWidth)/2 + monsterSize/2), round ((worldWidth/2) - monsterSize/2)) randomGenerator :: [Int]
+        randomWidths = take n $ randomRs (round ((-worldWidth)/2 + monsterSize), round ((worldWidth/2) - monsterSize)) randomGenerator :: [Int]
+        randomHeights = take n $ randomRs (round ((-worldWidth)/2 + monsterSize), round ((worldWidth/2) - monsterSize)) randomGenerator :: [Int]
         monsterPositions = zip (map fromIntegral randomWidths) (map fromIntegral randomHeights)
     player <- transfer3 initialPlayer (movePlayer 10 worldDimensions) directionKey levelOver' shootKey
     randomNumber <- stateful (undefined, randomGenerator) nextRandom
