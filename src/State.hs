@@ -15,7 +15,7 @@ type Pos = Point
 data Player = Player {position :: Pos}
 
 initialPlayer :: Player
-initialPlayer = Player (200,200)
+initialPlayer = Player (0,0)
 
 playerSize :: Float
 playerSize = 20
