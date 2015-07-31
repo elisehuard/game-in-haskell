@@ -24,7 +24,7 @@ main = do
     randomGenerator <- newStdGen
     glossState <- initState
     textures <- loadTextures
-    withWindow width height windowSizeSink "Game-Demo" $ \win -> do
+    withWindow width height windowSizeSink "hunted" $ \win -> do
       withSound $ \_ _ -> do
           sounds <- loadSounds
           backgroundMusic (backgroundTune sounds)
