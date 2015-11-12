@@ -2,7 +2,7 @@
 
 code with [https://leanpub.com/gameinhaskell](https://leanpub.com/gameinhaskell)
 
-I recommend using a sandbox. checkout the repo, and then
+I recommend using a sandbox. clone the repo, and then
 
     cabal sandbox init
     cabal install --only-dependencies

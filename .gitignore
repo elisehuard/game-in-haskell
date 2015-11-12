@@ -1,3 +1,6 @@
 .cabal-sandbox
 dist
 cabal.sandbox.config
+
+# Vim swapfiles
+*.sw?
