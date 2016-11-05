@@ -15,18 +15,23 @@ maintainer:          elise@jabberwocky.eu
 build-type:          Simple
 -- extra-source-files:
 cabal-version:       >=1.10
+tested-with:         GHC==7.10.3
+
+-- Dependency constraints are specified by stack.yaml or (untested) cabal.config
+-- and not repeated below. If you don't like this, please do the work
+-- of testing and maintaining them, perhaps with the help of hpack.
 
 executable shapes-demo
   main-is:             Shapes.hs
   -- other-modules:
   -- other-extensions:
   ghc-options:       -Wall
-  build-depends:       base >= 4.8 && <4.9
-                     , GLFW-b == 1.4.7.2
-                     , text == 1.2.1.1
+  build-depends:       base
+                     , GLFW-b
+                     , text
                      , bytestring
-                     , gloss == 1.9.3.1
-                     , gloss-rendering == 1.9.3.1
+                     , gloss
+                     , gloss-rendering
   hs-source-dirs:      src
   default-language:    Haskell2010
 
@@ -35,10 +40,10 @@ executable state-demo
   -- other-modules:
   -- other-extensions:
   ghc-options:       -Wall
-  build-depends:       base >=4.8 && <4.9
-                     , GLFW-b == 1.4.7.2
-                     , gloss == 1.9.3.1
-                     , gloss-rendering == 1.9.3.1
+  build-depends:       base
+                     , GLFW-b
+                     , gloss
+                     , gloss-rendering
                      , mtl
   hs-source-dirs:      src
   default-language:    Haskell2010
@@ -48,12 +53,12 @@ executable frp-demo
   -- other-modules:
   -- other-extensions:
   ghc-options:       -Wall
-  build-depends:       base >=4.8 && <4.9
-                     , GLFW-b == 1.4.7.2
-                     , gloss == 1.9.3.1
-                     , gloss-rendering == 1.9.3.1
-                     , elerea == 2.8.0
-                     , random == 1.1
+  build-depends:       base
+                     , GLFW-b
+                     , gloss
+                     , gloss-rendering
+                     , elerea
+                     , random
   hs-source-dirs:      src
   default-language:    Haskell2010
 
@@ -62,12 +67,12 @@ executable animated
   -- other-modules:
   -- other-extensions:
   ghc-options:       -Wall
-  build-depends:       base >=4.8 && <4.9
-                     , GLFW-b == 1.4.7.2
-                     , gloss == 1.9.3.1
-                     , gloss-rendering == 1.9.3.1
-                     , elerea == 2.8.0
-                     , random == 1.1
+  build-depends:       base
+                     , GLFW-b
+                     , gloss
+                     , gloss-rendering
+                     , elerea
+                     , random
   hs-source-dirs:      src
   default-language:    Haskell2010
 
@@ -76,13 +81,13 @@ executable music
   -- other-modules:
   -- other-extensions:
   ghc-options:       -Wall -threaded
-  build-depends:       base >=4.8 && <4.9
-                     , GLFW-b == 1.4.7.2
-                     , gloss == 1.9.3.1
-                     , gloss-rendering == 1.9.3.1
-                     , elerea == 2.8.0
-                     , random == 1.1
-                     , ALUT == 2.4.0.0
+  build-depends:       base
+                     , GLFW-b
+                     , gloss
+                     , gloss-rendering
+                     , elerea
+                     , random
+                     , ALUT
   hs-source-dirs:      src
   default-language:    Haskell2010
 
@@ -94,13 +99,13 @@ executable extended
                      , Hunted.Graphics
                      , Hunted.Backend
   ghc-options:       -Wall
-  build-depends:       base >=4.8 && <4.9
-                     , GLFW-b == 1.4.7.2
-                     , gloss == 1.9.3.1
-                     , gloss-rendering == 1.9.3.1
-                     , elerea == 2.8.0
-                     , random == 1.1
-                     , ALUT == 2.4.0.0
+  build-depends:       base
+                     , GLFW-b
+                     , gloss
+                     , gloss-rendering
+                     , elerea
+                     , random
+                     , ALUT
                      , containers
                      , transformers
   hs-source-dirs:      src
@@ -117,43 +122,43 @@ library
                      , Testing.Internals.CommandParser
   -- other-extensions:
   ghc-options:       -Wall
-  build-depends:       base >=4.8 && <4.9
-                     , GLFW-b == 1.4.7.2
-                     , gloss == 1.9.3.1
-                     , gloss-rendering == 1.9.3.1
-                     , elerea == 2.8.0
-                     , random == 1.1
-                     , ALUT == 2.4.0.0
-                     , containers
+  build-depends:       base
+                     , ALUT
+                     , GLFW-b
+                     , gloss
+                     , gloss-rendering
+                     , elerea
+                     , aeson
+                     , attoparsec
                      , bytestring
-                     , aeson == 0.8.0.2
-                     , time
-                     , haskeline == 0.7.2.1
-                     , transformers
-                     , attoparsec == 0.12.1.6
+                     , containers
+                     , haskeline
+                     , random
                      , text
+                     , time
+                     , transformers
   hs-source-dirs:      src
   default-language:    Haskell2010
 
 executable testing
   main-is:             Testing/Main.hs
-  build-depends:       base >=4.8 && <4.9
-                     , elerea == 2.8.0
-                     , game-in-haskell-book
-                     , GLFW-b == 1.4.7.2
-                     , gloss == 1.9.3.1
-                     , gloss-rendering == 1.9.3.1
-                     , elerea == 2.8.0
-                     , random == 1.1
-                     , ALUT == 2.4.0.0
-                     , containers
-                     , options == 1.2.1.1
-                     , aeson == 0.8.0.2
+  build-depends:       game-in-haskell-book
+                     , base
+                     , elerea
+                     , GLFW-b
+                     , gloss
+                     , gloss-rendering
+                     , elerea
+                     , random
+                     , ALUT
+                     , options
+                     , aeson
+                     , haskeline
+                     , attoparsec
                      , bytestring
+                     , containers
                      , time
-                     , haskeline == 0.7.2.1
                      , transformers
-                     , attoparsec == 0.12.1.6
                      , text
   ghc-options:         -Wall
   hs-source-dirs:      src
@@ -163,11 +168,11 @@ test-suite hunit
   type:                exitcode-stdio-1.0
   main-is:             HUnit.hs
   hs-source-dirs:      test
-  build-depends:       base >=4.8 && <4.9
-                     , HUnit >= 1.2
-                     , test-framework       >= 0.6
-                     , test-framework-hunit >= 0.2
-                     , test-framework-th    >= 0.2
+  build-depends:       base
+                     , HUnit
+                     , test-framework
+                     , test-framework-hunit
+                     , test-framework-th
                      , game-in-haskell-book
   default-language:    Haskell2010
 
@@ -175,10 +180,10 @@ test-suite properties
   type:                exitcode-stdio-1.0
   main-is:             Properties.hs
   hs-source-dirs:      test
-  build-depends:       base >=4.8 && <4.9
-                     , QuickCheck                 >= 2.4
-                     , test-framework             >= 0.6
-                     , test-framework-quickcheck2 >= 0.2
-                     , test-framework-th          >= 0.2
+  build-depends:       base
+                     , QuickCheck
+                     , test-framework
+                     , test-framework-quickcheck2
+                     , test-framework-th
                      , game-in-haskell-book
   default-language:    Haskell2010
