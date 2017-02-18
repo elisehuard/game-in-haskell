@@ -170,8 +170,8 @@ playLevel windowSize directionKey shootKey randomGenerator level@(Level n) curre
 
     -- sound signals
     statusChange <- transfer3 Nothing safeOrDanger monsters monsters' levelOver
-    playerScreams <- Elerea.till ((== (Just Lose)) <$> levelOver)
-    monsterScreams <- Elerea.till ((== (Just Win)) <$> levelOver)
+    playerScreams <- till ((== (Just Lose)) <$> levelOver)
+    monsterScreams <- till ((== (Just Win)) <$> levelOver)
 
 
     let monsterIsHunting = (foldr (||) False) <$> (fmap <$> (stillHunting <$> levelOver) <*> monsters)

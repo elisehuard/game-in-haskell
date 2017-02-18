@@ -154,7 +154,7 @@ hunted win directionKey randomGenerator textures glossState sounds = mdo
     gameOver' <- delay False gameOver
     viewport <- transfer initialViewport viewPortMove player
     statusChange <- transfer2 Nothing monitorStatusChange monster monster'
-    endOfGame <- Elerea.till gameOver
+    endOfGame <- till gameOver
 
     let hunting = stillHunting <$> monster <*> gameOver
         renderState = RenderState <$> player <*> monster <*> gameOver <*> viewport

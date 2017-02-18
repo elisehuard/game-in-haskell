@@ -216,8 +216,9 @@ playLevel windowSize directionKey shootKey randomGenerator startState commands r
 
     -- sound signals
     statusChange <- transfer3 Nothing safeOrDanger monsters monsters' levelOver
-    playerScreams <- Elerea.till ((== (Just Lose)) <$> levelOver)
-    monsterScreams <- Elerea.till ((== (Just Win)) <$> levelOver)
+    playerScreams <- till ((== (Just Lose)) <$> levelOver)
+    monsterScreams <- 
+    till ((== (Just Win)) <$> levelOver)
 
     let actualLives = overridingLives lives <$> commands <*> actualLives'
         overridingLives lives (Just (LivesCommand num)) _ = num
