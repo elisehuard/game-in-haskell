@@ -142,6 +142,15 @@ library
 
 executable testing
   main-is:             Testing/Main.hs
+  other-modules:
+          Testing.Backend
+          Testing.CommandLine
+          Testing.Game
+          Testing.GameTypes
+          Testing.Graphics
+          Testing.Internals.CommandParser
+          Testing.Internals.Game
+          Testing.Sound
   build-depends:       game-in-haskell-book
                      , base
                      , elerea
