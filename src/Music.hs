@@ -89,7 +89,7 @@ monsterSpeed = 5
 
 main :: IO ()
 main = do
-    (directionKey, directionKeySink) <- external (False, False, False, False)
+    (directionKey, directionKeySink) <- unsafeExternal (False, False, False, False)
     randomGenerator <- newStdGen
     glossState <- initState
     textures <- loadTextures
@@ -154,7 +154,7 @@ hunted win directionKey randomGenerator textures glossState sounds = mdo
     gameOver' <- delay False gameOver
     viewport <- transfer initialViewport viewPortMove player
     statusChange <- transfer2 Nothing monitorStatusChange monster monster'
-    endOfGame <- Elerea.until gameOver
+    endOfGame <- Elerea.till gameOver
 
     let hunting = stillHunting <$> monster <*> gameOver
         renderState = RenderState <$> player <*> monster <*> gameOver <*> viewport

@@ -53,12 +53,12 @@ main = runCommand $ \opts _ -> do
     when (optInteractive opts) $ do
       _ <- forkIO (interactiveCommandLine commandVar)
       return ()
-    (snapshot, snapshotSink) <- external (0,False)
-    (record, recordSink) <- external (0, False, False)
-    (commands, commandSink) <- external Nothing
-    (directionKey, directionKeySink) <- external (False, False, False, False)
-    (shootKey, shootKeySink) <- external (False, False, False, False)
-    (windowSize,windowSizeSink) <- external (fromIntegral width, fromIntegral height)
+    (snapshot, snapshotSink) <- unsafeExternal (0,False)
+    (record, recordSink) <- unsafeExternal (0, False, False)
+    (commands, commandSink) <- unsafeExternal Nothing
+    (directionKey, directionKeySink) <- unsafeExternal (False, False, False, False)
+    (shootKey, shootKeySink) <- unsafeExternal (False, False, False, False)
+    (windowSize,windowSizeSink) <- unsafeExternal (fromIntegral width, fromIntegral height)
     randomGenerator <- newStdGen
     glossState <- initState
     textures <- loadTextures

@@ -38,7 +38,7 @@ monsterSpeed = 5
 
 main :: IO ()
 main = do
-    (directionKey, directionKeySink) <- external (False, False, False, False)
+    (directionKey, directionKeySink) <- unsafeExternal (False, False, False, False)
     randomGenerator <- newStdGen
     glossState <- initState
     withWindow width height "Game-Demo" $ \win -> do
