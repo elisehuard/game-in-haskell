@@ -1,27 +1,16 @@
-# closest LTS to book's 2015 dependencies
-resolver: lts-3.22
-
-# allow GHC 7.10.3 in place of 7.10.2
-compiler-check: newer-minor
+resolver: lts-8.0
 
 packages:
-- .
+- '.'
 
-extra-deps:
-- ALUT-2.4.0.2
-- GLFW-b-1.4.8.1
-- GLURaw-2.0.0.2
-- GLUT-2.7.0.10
-- ObjectName-1.1.0.1
-- OpenAL-1.7.0.4
-- OpenGL-3.0.1.0
-- OpenGLRaw-3.2.3.0
-- bindings-GLFW-3.1.2.2
-- elerea-2.8.0
-- gloss-1.10.2.3
-- gloss-rendering-1.10.3.3
+extra-deps: []
 
+# Control whether we use the GHC we find on the path
+# system-ghc: true
+#
+# Allow a newer minor version of GHC than the snapshot specifies
+# compiler-check: newer-minor
+#
 # extra directories for C libs, if not in a standard place
 # extra-include-dirs: [/path/to/dir]
 # extra-lib-dirs: [/path/to/dir]
-
