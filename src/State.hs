@@ -60,7 +60,6 @@ move (_, _, True, _) (Player (xpos, ypos)) increment = Player (xpos, (ypos + inc
 move (_, _, _, True) (Player (xpos, ypos)) increment = Player (xpos, (ypos - increment))
 move (False, False, False, False) (Player (xpos, ypos)) _ = Player (xpos, ypos)
 
-renderFrame :: Player -> Window -> RS.State -> IO ()
 renderFrame (Player (xpos, ypos)) window glossState = do
    displayPicture (width, height) white glossState 1.0 $ translate xpos ypos $ rectangleSolid playerSize playerSize
    swapBuffers window

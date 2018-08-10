@@ -78,14 +78,12 @@ monsterSpeed = 5
 
 main :: IO ()
 main = do
-    (directionKeyGen, directionKeySink) <- external (False, False, False, False)
+    (directionKey, directionKeySink) <- external (False, False, False, False)
     randomGenerator <- newStdGen
     glossState <- initState
     textures <- loadTextures
     withWindow width height "Game-Demo" $ \win -> do
-          network <- start $ do
-            directionKey <- directionKeyGen
-            hunted win directionKey randomGenerator textures glossState
+          network <- start $ hunted win directionKey randomGenerator textures glossState
           fix $ \loop -> do
                readInput win directionKeySink
                join network
