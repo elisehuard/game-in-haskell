@@ -89,7 +89,7 @@ monsterSpeed = 5
 
 main :: IO ()
 main = do
-    (directionKey, directionKeySink) <- external (False, False, False, False)
+    (directionKeyGen, directionKeySink) <- external (False, False, False, False)
     randomGenerator <- newStdGen
     glossState <- initState
     textures <- loadTextures
@@ -97,7 +97,9 @@ main = do
       withProgNameAndArgs runALUT $ \_ _ -> do
           sounds <- loadSounds
           backgroundMusic (backgroundTune sounds)
-          network <- start $ hunted win directionKey randomGenerator textures glossState sounds
+          network <- start $ do
+            directionKey <- directionKeyGen
+            hunted win directionKey randomGenerator textures glossState sounds
           fix $ \loop -> do
                readInput win directionKeySink
                join network
@@ -154,7 +156,7 @@ hunted win directionKey randomGenerator textures glossState sounds = mdo
     gameOver' <- delay False gameOver
     viewport <- transfer initialViewport viewPortMove player
     statusChange <- transfer2 Nothing monitorStatusChange monster monster'
-    endOfGame <- Elerea.until gameOver
+    endOfGame <- Elerea.till gameOver
 
     let hunting = stillHunting <$> monster <*> gameOver
         renderState = RenderState <$> player <*> monster <*> gameOver <*> viewport
