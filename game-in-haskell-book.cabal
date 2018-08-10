@@ -2,14 +2,14 @@
 --  documentation, see http://haskell.org/cabal/users-guide/
 
 name:                game-in-haskell-book
-version:             0.1.0.1
+version:             0.1.0.0
 -- synopsis:
 -- description:
 homepage:            https://leanpub.com/gameinhaskell
 license:             MIT
 license-file:        LICENSE
-author:              Elise Huard + Tran
-maintainer:          tran@ax.polytechnique.org
+author:              Elise Huard
+maintainer:          elise@jabberwocky.eu
 -- copyright:
 -- category:
 build-type:          Simple
@@ -21,12 +21,12 @@ executable shapes-demo
   -- other-modules:
   -- other-extensions:
   ghc-options:       -Wall
-  build-depends:       base >= 4.8
-                     , GLFW-b >= 1.4.7.2
-                     , text >= 1.2.1.1
+  build-depends:       base >= 4.8 && <4.9
+                     , GLFW-b == 1.4.7.2
+                     , text == 1.2.1.1
                      , bytestring
-                     , gloss >= 1.9.3.1
-                     , gloss-rendering >= 1.9.3.1
+                     , gloss == 1.9.3.1
+                     , gloss-rendering == 1.9.3.1
   hs-source-dirs:      src
   default-language:    Haskell2010
 
@@ -35,10 +35,10 @@ executable state-demo
   -- other-modules:
   -- other-extensions:
   ghc-options:       -Wall
-  build-depends:       base >=4.8 && <=5
-                     , GLFW-b >= 1.4.7.2
-                     , gloss >= 1.9.3.1
-                     , gloss-rendering >= 1.9.3.1
+  build-depends:       base >=4.8 && <4.9
+                     , GLFW-b == 1.4.7.2
+                     , gloss == 1.9.3.1
+                     , gloss-rendering == 1.9.3.1
                      , mtl
   hs-source-dirs:      src
   default-language:    Haskell2010
@@ -48,12 +48,12 @@ executable frp-demo
   -- other-modules:
   -- other-extensions:
   ghc-options:       -Wall
-  build-depends:       base >=4.8 && <=5
-                     , GLFW-b >= 1.4.7.2
-                     , gloss >= 1.9.3.1
-                     , gloss-rendering >= 1.9.3.1
-                     , elerea >= 2.8.0
-                     , random >= 1.1
+  build-depends:       base >=4.8 && <4.9
+                     , GLFW-b == 1.4.7.2
+                     , gloss == 1.9.3.1
+                     , gloss-rendering == 1.9.3.1
+                     , elerea == 2.8.0
+                     , random == 1.1
   hs-source-dirs:      src
   default-language:    Haskell2010
 
@@ -62,12 +62,12 @@ executable animated
   -- other-modules:
   -- other-extensions:
   ghc-options:       -Wall
-  build-depends:       base >=4.8 && <=5
-                     , GLFW-b >= 1.4.7.2
-                     , gloss >= 1.9.3.1
-                     , gloss-rendering >= 1.9.3.1
-                     , elerea >= 2.8.0
-                     , random >= 1.1
+  build-depends:       base >=4.8 && <4.9
+                     , GLFW-b == 1.4.7.2
+                     , gloss == 1.9.3.1
+                     , gloss-rendering == 1.9.3.1
+                     , elerea == 2.8.0
+                     , random == 1.1
   hs-source-dirs:      src
   default-language:    Haskell2010
 
@@ -76,13 +76,13 @@ executable music
   -- other-modules:
   -- other-extensions:
   ghc-options:       -Wall -threaded
-  build-depends:       base >=4.8 && <=5
-                     , GLFW-b >= 1.4.7.2
-                     , gloss >= 1.9.3.1
-                     , gloss-rendering >= 1.9.3.1
-                     , elerea >= 2.8.0
-                     , random >= 1.1
-                     , ALUT >= 2.4.0.0
+  build-depends:       base >=4.8 && <4.9
+                     , GLFW-b == 1.4.7.2
+                     , gloss == 1.9.3.1
+                     , gloss-rendering == 1.9.3.1
+                     , elerea == 2.8.0
+                     , random == 1.1
+                     , ALUT == 2.4.0.0
   hs-source-dirs:      src
   default-language:    Haskell2010
 
@@ -94,13 +94,13 @@ executable extended
                      , Hunted.Graphics
                      , Hunted.Backend
   ghc-options:       -Wall
-  build-depends:       base >=4.8 && <=5
-                     , GLFW-b >= 1.4.7.2
-                     , gloss >= 1.9.3.1
-                     , gloss-rendering >= 1.9.3.1
-                     , elerea >= 2.8.0
-                     , random >= 1.1
-                     , ALUT >= 2.4.0.0
+  build-depends:       base >=4.8 && <4.9
+                     , GLFW-b == 1.4.7.2
+                     , gloss == 1.9.3.1
+                     , gloss-rendering == 1.9.3.1
+                     , elerea == 2.8.0
+                     , random == 1.1
+                     , ALUT == 2.4.0.0
                      , containers
                      , transformers
   hs-source-dirs:      src
@@ -117,47 +117,43 @@ library
                      , Testing.Internals.CommandParser
   -- other-extensions:
   ghc-options:       -Wall
-  build-depends:       base >=4.8
-                     , GLFW-b >= 1.4.7.2
-                     , gloss >= 1.9.3.1
-                     , gloss-rendering >= 1.9.3.1
-                     , elerea >= 2.8.0
-                     , random >= 1.1
-                     , ALUT >= 2.4.0.0
+  build-depends:       base >=4.8 && <4.9
+                     , GLFW-b == 1.4.7.2
+                     , gloss == 1.9.3.1
+                     , gloss-rendering == 1.9.3.1
+                     , elerea == 2.8.0
+                     , random == 1.1
+                     , ALUT == 2.4.0.0
                      , containers
                      , bytestring
-                     , aeson >= 0.8.0.2
+                     , aeson == 0.8.0.2
                      , time
-                     , haskeline >= 0.7.2.1
+                     , haskeline == 0.7.2.1
                      , transformers
-                     , transformers-base
-                     , monads-tf
-                     , attoparsec >= 0.12.1.6
+                     , attoparsec == 0.12.1.6
                      , text
   hs-source-dirs:      src
   default-language:    Haskell2010
 
 executable testing
   main-is:             Testing/Main.hs
-  build-depends:       base >=4.8 && <=5
-                     , elerea >= 2.8.0
+  build-depends:       base >=4.8 && <4.9
+                     , elerea == 2.8.0
                      , game-in-haskell-book
-                     , GLFW-b >= 1.4.7.2
-                     , gloss >= 1.9.3.1
-                     , gloss-rendering >= 1.9.3.1
-                     , elerea >= 2.8.0
-                     , random >= 1.1
-                     , ALUT >= 2.4.0.0
+                     , GLFW-b == 1.4.7.2
+                     , gloss == 1.9.3.1
+                     , gloss-rendering == 1.9.3.1
+                     , elerea == 2.8.0
+                     , random == 1.1
+                     , ALUT == 2.4.0.0
                      , containers
-                     , options >= 1.2.1.1
-                     , aeson >= 0.8.0.2
+                     , options == 1.2.1.1
+                     , aeson == 0.8.0.2
                      , bytestring
                      , time
-                     , haskeline >= 0.7.2.1
+                     , haskeline == 0.7.2.1
                      , transformers
-                     , transformers-base
-                     , monads-tf
-                     , attoparsec >= 0.12.1.6
+                     , attoparsec == 0.12.1.6
                      , text
   ghc-options:         -Wall
   hs-source-dirs:      src
@@ -167,7 +163,7 @@ test-suite hunit
   type:                exitcode-stdio-1.0
   main-is:             HUnit.hs
   hs-source-dirs:      test
-  build-depends:       base >=4.8 && <=5
+  build-depends:       base >=4.8 && <4.9
                      , HUnit >= 1.2
                      , test-framework       >= 0.6
                      , test-framework-hunit >= 0.2
@@ -179,7 +175,7 @@ test-suite properties
   type:                exitcode-stdio-1.0
   main-is:             Properties.hs
   hs-source-dirs:      test
-  build-depends:       base >=4.8 && <=5
+  build-depends:       base >=4.8 && <4.9
                      , QuickCheck                 >= 2.4
                      , test-framework             >= 0.6
                      , test-framework-quickcheck2 >= 0.2
