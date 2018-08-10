@@ -82,8 +82,6 @@ renderFrame :: Window
                -> RenderState
                -> IO ()
 -}
---renderFrame :: GLFW-b-3.2.1.0:Graphics.UI.GLFW.Types.Window
---               -> State -> Textures -> (Int, Int) -> RenderState -> IO ()
 renderFrame window
             glossState
             textures
@@ -137,8 +135,6 @@ renderPlayer (Player _ (Just (PlayerMovement facing Three)) shootDir) textureSet
 renderPlayer (Player _ (Just (PlayerMovement facing Four)) shootDir) textureSet = shootDirectionTexture (Just facing) shootDir $ walkRight $ playerDirectionTexture facing textureSet
 renderPlayer (Player _ Nothing shootDir) textureSet = shootDirectionTexture Nothing shootDir $ neutral $ fronts textureSet
 
-translateInt :: (Integral a2, Integral a1) =>
-                a1 -> a2 -> Picture -> Picture
 translateInt x y = translate (fromIntegral x) (fromIntegral y)
 
 renderMonster :: TextureSet -> TextureSet -> Picture -> Monster -> Picture

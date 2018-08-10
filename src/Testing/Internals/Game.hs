@@ -95,21 +95,6 @@ defaultStart = StartState { gameStatusSignal = Start
 --   pull request required
 -}
 -- expected:
-{- hunted :: (Show a, RandomGen p) =>
-          GLFW-b-3.2.1.0:Graphics.UI.GLFW.Types.Window
-          -> Signal (Int, Int)
-          -> Signal (Bool, Bool, Bool, Bool)
-          -> Signal (Bool, Bool, Bool, Bool)
-          -> p
-          -> Testing.Graphics.Textures
-          -> gloss-rendering-1.12.0.0:Graphics.Gloss.Internals.Rendering.State.State
-          -> Sounds
-          -> StartState
-          -> Signal (Int, Bool)
-          -> Signal (a, Bool, Bool)
-          -> Signal (Maybe Command)
-          -> SignalGen (Signal (IO ()))
--}
 hunted win windowSize directionKey shootKey randomGenerator textures glossState sounds startState snapshotSig recordKey commands = mdo
   let mkGame = playGame windowSize directionKey shootKey randomGenerator startState commands (snd <$> recordingData)
   (gameState, gameTrigger) <- switcher $ mkGame <$> gameStatus'
@@ -494,17 +479,6 @@ monitorStatusChange ((Monster _ (Wander _ _) _), (Monster _ (Hunting _) _)) = Ju
 monitorStatusChange _ = Nothing
 
 -- output functions
-{- outputFunction :: GLFW-b-3.2.1.0:Graphics.UI.GLFW.Types.Window
-                  -> gloss-rendering-1.12.0.0:Graphics.Gloss.Internals.Rendering.State.State
-                  -> Testing.Graphics.Textures
-                  -> Sounds
-                  -> GameState
-                  -> (Int, Bool)
-                  -> (String, Bool)
-                  -> (Bool, Bool, Bool, Bool)
-                  -> (Bool, Bool, Bool, Bool)
-                  -> IO ()
--}
 outputFunction window glossState textures sounds (GameState renderState soundState) snapshot record directionKey shootKey =
   (renderFrame window glossState textures (worldWidth, worldHeight) renderState) >>
     playSounds sounds soundState >>

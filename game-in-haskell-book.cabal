@@ -106,7 +106,6 @@ executable extended
   hs-source-dirs:      src
   default-language:    Haskell2010
 
-
 library
   exposed-modules:     Testing.GameTypes
                      , Testing.Internals.Game
@@ -140,14 +139,6 @@ library
 
 executable testing
   main-is:             Testing/Main.hs
-  other-modules:       Testing.GameTypes
-                     , Testing.Backend
-                     , Testing.CommandLine
-                     , Testing.Game
-                     , Testing.Graphics
-                     , Testing.Internals.CommandParser
-                     , Testing.Internals.Game
-                     , Testing.Sound
   build-depends:       base >=4.8 && <=5
                      , elerea >= 2.8.0
                      , game-in-haskell-book
