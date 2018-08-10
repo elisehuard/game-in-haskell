@@ -24,6 +24,7 @@ main = do
             k <- keyIsPressed window Key'Escape
             unless k $ loop glossState window
 
+renderFrame :: Window -> State -> IO ()
 renderFrame window glossState = do
      displayPicture (windowWidth, windowHeight) white glossState 1.0 $
        Pictures

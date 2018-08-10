@@ -31,7 +31,7 @@ data MainOptions = MainOptions {
 , optLog :: Maybe String
 } deriving Show
 
-instance Options MainOptions where
+instance Options.Options MainOptions where
   defineOptions = pure MainOptions
                 <*> simpleOption "start-state" Nothing
                       "file containing start state"
@@ -53,12 +53,12 @@ main = runCommand $ \opts _ -> do
     when (optInteractive opts) $ do
       _ <- forkIO (interactiveCommandLine commandVar)
       return ()
-    (snapshot, snapshotSink) <- external (0,False)
-    (record, recordSink) <- external (0, False, False)
-    (commands, commandSink) <- external Nothing
-    (directionKey, directionKeySink) <- external (False, False, False, False)
-    (shootKey, shootKeySink) <- external (False, False, False, False)
-    (windowSize,windowSizeSink) <- external (fromIntegral width, fromIntegral height)
+    (snapshotGen, snapshotSink) <- external (0,False)
+    (recordGen, recordSink) <- external (0, False, False)
+    (commandsGen, commandSink) <- external Nothing
+    (directionKeyGen, directionKeySink) <- external (False, False, False, False)
+    (shootKeyGen, shootKeySink) <- external (False, False, False, False)
+    (windowSizeGen,windowSizeSink) <- external (fromIntegral width, fromIntegral height)
     randomGenerator <- newStdGen
     glossState <- initState
     textures <- loadTextures
@@ -66,7 +66,14 @@ main = runCommand $ \opts _ -> do
       withSound $ \_ _ -> do
           sounds <- loadSounds
           backgroundMusic (backgroundTune sounds)
-          network <- start $ hunted win
+          network <- start $ do
+                                windowSize <- windowSizeGen
+                                directionKey <- directionKeyGen
+                                shootKey <- shootKeyGen
+                                snapshot  <- snapshotGen
+                                commands  <- commandsGen
+                                record <- recordGen
+                                hunted win
                                     windowSize
                                     directionKey
                                     shootKey
