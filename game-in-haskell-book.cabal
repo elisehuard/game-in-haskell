@@ -137,6 +137,15 @@ library
 
 executable testing
   main-is:             Testing/Main.hs
+  other-modules:       Testing.GameTypes
+                     , Testing.Internals.Game
+                     , Testing.Game
+                     , Testing.Sound
+                     , Testing.Graphics
+                     , Testing.Backend
+                     , Testing.CommandLine
+                     , Testing.Internals.CommandParser
+
   build-depends:       base >=4.8 &&  <=5
                      , elerea >= 2.8.0
                      , game-in-haskell-book
@@ -175,6 +184,8 @@ test-suite properties
   type:                exitcode-stdio-1.0
   main-is:             Properties.hs
   hs-source-dirs:      test
+  other-modules:
+
   build-depends:       base >=4.8 &&  <=5
                      , QuickCheck                 >= 2.4
                      , test-framework             >= 0.6
