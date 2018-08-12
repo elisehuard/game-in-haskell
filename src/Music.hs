@@ -147,6 +147,14 @@ loadSound path = do
 loadAnims :: String -> String -> String -> IO WalkingTexture
 loadAnims path1 path2 path3 = WalkingTexture <$> loadBMP path1 <*> loadBMP path2 <*> loadBMP path3
 
+hunted :: RandomGen t =>
+          Window
+          -> Signal (Bool, Bool, Bool, Bool)
+          -> t
+          -> Textures
+          -> State
+          -> Sounds
+          -> SignalGen (Signal (IO ()))
 hunted win directionKey randomGenerator textures glossState sounds = mdo
     player <- transfer2 initialPlayer (movePlayer 10) directionKey gameOver'
     randomNumber <- stateful (undefined, randomGenerator) nextRandom
@@ -271,8 +279,16 @@ monitorStatusChange (Monster _ (Wander _ _)) (Monster _ (Hunting _)) _ = Just Sa
 monitorStatusChange _ _ _ = Nothing
 
 -- output functions
+outputFunction :: Window
+                  -> State
+                  -> Textures
+                  -> Sounds
+                  -> RenderState
+                  -> SoundState
+                  -> IO ()
 outputFunction window glossState textures sounds renderState soundState =  (renderFrame window glossState textures renderState) >> (playSounds sounds soundState)
 
+renderFrame :: Window -> State -> Textures -> RenderState -> IO ()
 renderFrame window glossState textures (RenderState (Player _ playerDir) (Monster (xmon, ymon) status) gameOver viewport) = do
    displayPicture (width, height) black glossState (viewPortScale viewport) $ 
      Pictures $ gameOngoing gameOver

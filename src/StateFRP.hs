@@ -29,18 +29,27 @@ instance Random Direction where
   random g = randomR (minBound, maxBound) g
 
 initialPlayer = Player (0, 0)
+
+initialMonster :: Monster
 initialMonster = Monster (200, 200) (Wander WalkUp wanderDist)
+width :: Int
 width = 640
+height :: Int
 height = 480
+playerSize :: Float
 playerSize = 20
+monsterSize :: Float
 monsterSize = 20
+monsterSpeed :: Float
 monsterSpeed = 5
+
 
 main :: IO ()
 main = do
     (directionKeyGen, directionKeySink) <- external (False, False, False, False)
     randomGenerator <- newStdGen
     glossState <- initState
+    
     withWindow width height "Game-Demo" $ \win -> do
           network <- start $ do
             directionKey <- directionKeyGen
@@ -63,6 +72,7 @@ hunted win directionKey randomGenerator glossState = mdo
     where playerEaten player monster = distance player monster < (10^2  :: Float)
           nextRandom (a, g) = random g
 
+readInput :: Window -> ((Bool, Bool, Bool, Bool) -> IO b) -> IO b
 readInput window directionKeySink = do
     pollEvents
     l <- keyIsPressed window Key'Left
@@ -83,22 +93,29 @@ outsideOfLimits (xmon, ymon) size = xmon > fromIntegral width/2 - size/2 ||
                                     ymon > fromIntegral height/2 - size/2 ||
                                     ymon < (-(fromIntegral height)/2 + size/2)
 
+move :: (Bool, Bool, Bool, Bool) -> Player -> Float -> Player
 move (True, _, _, _) (Player (xpos, ypos)) increment = Player ((xpos - increment), ypos)
 move (_, True, _, _) (Player (xpos, ypos)) increment = Player ((xpos + increment), ypos)
 move (_, _, True, _) (Player (xpos, ypos)) increment = Player (xpos, (ypos + increment))
 move (_, _, _, True) (Player (xpos, ypos)) increment = Player (xpos, (ypos - increment))
 move (False, False, False, False) (Player (xpos, ypos)) _ = Player (xpos, ypos)
 
+wanderDist :: Int
 wanderDist = 40
+huntingDist :: Float
 huntingDist = 100
 
+wanderOrHunt :: Player
+                -> (Direction, b) -> Bool -> Monster -> Monster
 wanderOrHunt _ _ True monster = monster
 wanderOrHunt player (r, _) False monster = if close player monster
                                                 then hunt player monster
                                                 else wander r monster
 
+close :: Player -> Monster -> Bool
 close player monster = distance player monster < huntingDist^2
 
+distance :: Player -> Monster -> Float
 distance (Player (xpos, ypos)) (Monster (xmon, ymon) _) = (xpos - xmon)^2 + (ypos - ymon)^2
 
 -- if player is upper left quadrant, diagonal left
@@ -124,11 +141,15 @@ continueDirection WalkLeft True = WalkRight
 continueDirection WalkRight True = WalkLeft
 continueDirection direction False = direction
 
+stepInCurrentDirection :: Num a =>
+                          Direction -> (a, a) -> a -> (a, a)
 stepInCurrentDirection WalkUp (xpos, ypos)    speed = (xpos, ypos + speed)
 stepInCurrentDirection WalkDown (xpos, ypos)  speed = (xpos, ypos - speed)
 stepInCurrentDirection WalkLeft (xpos, ypos)  speed = (xpos - speed, ypos)
 stepInCurrentDirection WalkRight (xpos, ypos) speed = (xpos + speed, ypos)
 
+renderFrame :: Window
+               -> State -> Player -> Monster -> Bool -> IO ()
 renderFrame window glossState (Player (xpos, ypos)) (Monster (xmon, ymon) status) gameOver = do
    displayPicture (width, height) white glossState 1.0 $ 
      Pictures $ gameOngoing gameOver

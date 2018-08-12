@@ -68,6 +68,7 @@ initialLives = 3
 --   pull request required
 -}
 -- expected:
+          
 hunted win windowSize directionKey shootKey randomGenerator textures glossState sounds = mdo
   let mkGame = playGame windowSize directionKey shootKey randomGenerator
   (gameState, gameTrigger) <- switcher $ mkGame <$> gameStatus'
@@ -130,17 +131,16 @@ switcher levelGen = mdo
         store Nothing x = x
         toMaybe bool x = if bool then Just <$> x else pure Nothing
 
-{-
+
 playLevel :: RandomGen t =>
              Signal (Int, Int)
-          -> Signal (Bool, Bool, Bool, Bool)
-          -> Signal (Bool, Bool, Bool, Bool)
-          -> t
-          -> LevelStatus
-          -> Float
-          -> Int
-          -> SignalGen (Signal GameState, Signal Bool)
--}
+             -> Signal (Bool, Bool, Bool, Bool)
+             -> Signal (Bool, Bool, Bool, Bool)
+             -> t
+             -> LevelStatus
+             -> Float
+             -> Int
+             -> SignalGen (Signal GameState, Signal Bool)
 playLevel windowSize directionKey shootKey randomGenerator level@(Level n) currentScore lives = mdo
 
     -- render signals
