@@ -68,7 +68,18 @@ initialLives = 3
 --   pull request required
 -}
 -- expected:
-          
+{- -- uncomment when the decimal point bug in GLFW-b-3.2 is corrected --
+hunted :: RandomGen p =>
+          GLFW-b-3.2.1.0:Graphics.UI.GLFW.Types.Window
+          -> Signal (Int, Int)
+          -> Signal (Bool, Bool, Bool, Bool)
+          -> Signal (Bool, Bool, Bool, Bool)
+          -> p
+          -> Hunted.Graphics.Textures
+          -> gloss-rendering-1.12.0.0:Graphics.Gloss.Internals.Rendering.State.State
+          -> Sounds
+          -> SignalGen (Signal (IO ())) 
+          -}      
 hunted win windowSize directionKey shootKey randomGenerator textures glossState sounds = mdo
   let mkGame = playGame windowSize directionKey shootKey randomGenerator
   (gameState, gameTrigger) <- switcher $ mkGame <$> gameStatus'
@@ -420,5 +431,13 @@ monitorStatusChange ((Monster _ (Wander _ _) _), (Monster _ (Hunting _) _)) = Ju
 monitorStatusChange _ = Nothing
 
 -- output functions
+{-  uncomment when decimal point in module suffix bug is corrected
+outputFunction :: GLFW-b-3.2.1.0:Graphics.UI.GLFW.Types.Window
+                  -> gloss-rendering-1.12.0.0:Graphics.Gloss.Internals.Rendering.State.State
+                  -> Hunted.Graphics.Textures
+                  -> Sounds
+                  -> GameState
+                  -> IO ()
+                  -}
 outputFunction window glossState textures sounds (GameState renderState soundState) =
   (renderFrame window glossState textures (worldWidth, worldHeight) renderState) >> (playSounds sounds soundState)

@@ -1,14 +1,16 @@
 {-# LANGUAGE RecordWildCards #-}
+{-# LANGUAGE PackageImports #-}
 {-# OPTIONS_GHC -fno-warn-type-defaults #-}
 module Testing.Graphics (
   loadTextures
 , initState
 , renderFrame
+, Textures
 ) where
 
 import Testing.GameTypes
 import Testing.Backend (swapBuffers)
-
+import "GLFW-b" Graphics.UI.GLFW as GLFW
 import Graphics.Gloss hiding (play)
 import Graphics.Gloss.Rendering
 import Graphics.Gloss.Data.ViewPort
@@ -81,10 +83,10 @@ renderFrame :: Window
                -> (Float, Float)
                -> RenderState
                -> IO ()
--- or --
-renderFrame :: GLFW-b-3.2.1.0:Graphics.UI.GLFW.Types.Window
+-- or -- -}
+renderFrame :: GLFW.Window
                -> State -> Textures -> (Int, Int) -> RenderState -> IO ()
--}
+
 renderFrame window
             glossState
             textures

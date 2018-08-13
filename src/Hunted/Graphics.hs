@@ -69,13 +69,8 @@ loadWalkingTexture facing = do
                  <*> (shootingTexture <$> (sequence $ map (\p -> loadBMP $ p "-3") paths))
 
 {- again, need to export gloss internal state for this signature, pull request required
-renderFrame :: Window
-               -> gloss-rendering-1.9.2.1:Graphics.Gloss.Internals.Rendering.State.State
-               -> Textures
-               -> (Int, Int)
-               -> (Float, Float)
-               -> RenderState
-               -> IO ()
+renderFrame :: GLFW-b-3.2.1.0:Graphics.UI.GLFW.Types.Window
+               -> State -> Textures -> (Float, Float) -> RenderState -> IO ()
 -}
 renderFrame window
             glossState

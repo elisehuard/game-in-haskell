@@ -1,5 +1,6 @@
 {-# LANGUAGE PackageImports #-}
 import "GLFW-b" Graphics.UI.GLFW as GLFW
+import Graphics.Gloss
 import Graphics.Gloss.Rendering
 import Graphics.Gloss.Data.Color
 import Graphics.Gloss.Data.Picture
