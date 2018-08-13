@@ -1,13 +1,15 @@
 {-# OPTIONS_GHC -fno-warn-type-defaults #-}
+{-# LANGUAGE PackageImports #-}
 module Hunted.Graphics (
   loadTextures
 , initState
 , renderFrame
+, Textures
 ) where
 
 import Hunted.GameTypes
 import Hunted.Backend (swapBuffers)
-
+import "GLFW-b" Graphics.UI.GLFW as GLFW
 import Graphics.Gloss hiding (play)
 import Graphics.Gloss.Rendering
 import Graphics.Gloss.Data.ViewPort
@@ -68,10 +70,10 @@ loadWalkingTexture facing = do
                  <*> (shootingTexture <$> (sequence $ map (\p -> loadBMP $ p "-1") paths))
                  <*> (shootingTexture <$> (sequence $ map (\p -> loadBMP $ p "-3") paths))
 
-{- again, need to export gloss internal state for this signature, pull request required
-renderFrame :: GLFW-b-3.2.1.0:Graphics.UI.GLFW.Types.Window
+-- again, need to export gloss internal state for this signature, pull request required
+renderFrame :: GLFW.Window
                -> State -> Textures -> (Float, Float) -> RenderState -> IO ()
--}
+
 renderFrame window
             glossState
             textures
