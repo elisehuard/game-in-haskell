@@ -2,6 +2,12 @@
 
 code with [https://leanpub.com/gameinhaskell](https://leanpub.com/gameinhaskell)
 
+## Contributors
+Elise Huard
+Tran Quoc-Anh (upgrade 2018)
+
+## Usage
+
 I recommend using a sandbox. clone the repo, and then
 
     cabal sandbox init
