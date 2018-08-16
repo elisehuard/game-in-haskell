@@ -1,14 +1,16 @@
 {-# LANGUAGE RecordWildCards #-}
+{-# LANGUAGE PackageImports #-}
 {-# OPTIONS_GHC -fno-warn-type-defaults #-}
 module Testing.Graphics (
   loadTextures
 , initState
 , renderFrame
+, Textures
 ) where
 
 import Testing.GameTypes
 import Testing.Backend (swapBuffers)
-
+import "GLFW-b" Graphics.UI.GLFW as GLFW
 import Graphics.Gloss hiding (play)
 import Graphics.Gloss.Rendering
 import Graphics.Gloss.Data.ViewPort
@@ -73,15 +75,9 @@ loadWalkingTexture facing = do
                  <*> (shootingTexture <$> (sequence $ map (\p -> loadBMP $ p "-1") paths))
                  <*> (shootingTexture <$> (sequence $ map (\p -> loadBMP $ p "-3") paths))
 
-{- again, need to export gloss internal state for this signature, pull request required
-renderFrame :: Window
-               -> gloss-rendering-1.9.2.1:Graphics.Gloss.Internals.Rendering.State.State
-               -> Textures
-               -> (Int, Int)
-               -> (Float, Float)
-               -> RenderState
-               -> IO ()
--}
+-- again, need to export gloss internal state for this signature, pull request required
+renderFrame :: GLFW.Window -> State -> Textures -> (Int, Int) -> RenderState -> IO ()
+
 renderFrame window
             glossState
             textures
@@ -135,6 +131,8 @@ renderPlayer (Player _ (Just (PlayerMovement facing Three)) shootDir) textureSet
 renderPlayer (Player _ (Just (PlayerMovement facing Four)) shootDir) textureSet = shootDirectionTexture (Just facing) shootDir $ walkRight $ playerDirectionTexture facing textureSet
 renderPlayer (Player _ Nothing shootDir) textureSet = shootDirectionTexture Nothing shootDir $ neutral $ fronts textureSet
 
+translateInt :: (Integral a2, Integral a1) =>
+                a1 -> a2 -> Picture -> Picture
 translateInt x y = translate (fromIntegral x) (fromIntegral y)
 
 renderMonster :: TextureSet -> TextureSet -> Picture -> Monster -> Picture

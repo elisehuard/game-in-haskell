@@ -78,12 +78,14 @@ monsterSpeed = 5
 
 main :: IO ()
 main = do
-    (directionKey, directionKeySink) <- external (False, False, False, False)
+    (directionKeyGen, directionKeySink) <- external (False, False, False, False)
     randomGenerator <- newStdGen
     glossState <- initState
     textures <- loadTextures
     withWindow width height "Game-Demo" $ \win -> do
-          network <- start $ hunted win directionKey randomGenerator textures glossState
+          network <- start $ do
+            directionKey <- directionKeyGen
+            hunted win directionKey randomGenerator textures glossState
           fix $ \loop -> do
                readInput win directionKeySink
                join network
@@ -116,7 +118,13 @@ loadTextures = do
 loadAnims :: String -> String -> String -> IO WalkingTexture
 loadAnims path1 path2 path3 = WalkingTexture <$> loadBMP path1 <*> loadBMP path2 <*> loadBMP path3
 
-
+hunted :: RandomGen t =>
+          Window
+          -> Signal (Bool, Bool, Bool, Bool)
+          -> t
+          -> Textures
+          -> State
+          -> SignalGen (Signal (IO ()))
 hunted win directionKey randomGenerator textures glossState = mdo
     player <- transfer2 initialPlayer (movePlayer 10) directionKey gameOver'
     randomNumber <- stateful (undefined, randomGenerator) nextRandom
@@ -223,6 +231,14 @@ stepInCurrentDirection WalkDown (xpos, ypos)  speed = (xpos, ypos - speed)
 stepInCurrentDirection WalkLeft (xpos, ypos)  speed = (xpos - speed, ypos)
 stepInCurrentDirection WalkRight (xpos, ypos) speed = (xpos + speed, ypos)
 
+renderFrame :: Window
+               -> State
+               -> Textures
+               -> Player
+               -> Monster
+               -> Bool
+               -> ViewPort
+               -> IO ()
 renderFrame window glossState textures (Player _ playerDir) (Monster (xmon, ymon) status) gameOver viewport = do
    displayPicture (width, height) black glossState (viewPortScale viewport) $
      Pictures $ gameOngoing gameOver

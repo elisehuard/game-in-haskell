@@ -1,6 +1,6 @@
 {-# LANGUAGE RecursiveDo #-}
-{-# LANGUAGE PackageImports #-}
 {-# OPTIONS_GHC -fno-warn-type-defaults #-}
+{-# LANGUAGE PackageImports #-}
 module Testing.Internals.Game (
   hunted
 , monsterHits
@@ -13,11 +13,12 @@ module Testing.Internals.Game (
 , defaultStart
 , initialViewport
 ) where
-
+import "GLFW-b" Graphics.UI.GLFW as GLFW
+import Graphics.Gloss()
+import Graphics.Gloss.Rendering
 import Testing.GameTypes
 import Testing.Sound
 import Testing.Graphics
-
 import FRP.Elerea.Simple as Elerea
 import Control.Monad (when)
 import Control.Applicative ((<$>), (<*>), liftA2, pure)
@@ -27,9 +28,10 @@ import Graphics.Gloss.Data.ViewPort
 import System.Random (random, RandomGen(..), randomRs)
 import Data.Maybe (fromMaybe)
 import Data.Aeson
-import Data.Time.Clock
+import Data.Time.Clock()
 import qualified Data.ByteString.Lazy as B (appendFile, writeFile, concat)
 import qualified Data.ByteString.Lazy.Char8 as BC (singleton)
+
 
 initialPlayer :: Player
 initialPlayer = Player (0, 0) Nothing Nothing
@@ -95,6 +97,23 @@ defaultStart = StartState { gameStatusSignal = Start
 --   pull request required
 -}
 -- expected:
+
+hunted :: (Show a, RandomGen p) =>
+          GLFW.Window
+          -> Signal (Int, Int)
+          -> Signal (Bool, Bool, Bool, Bool)
+          -> Signal (Bool, Bool, Bool, Bool)
+          -> p
+          -> Testing.Graphics.Textures
+          -> State
+          -> Sounds
+          -> StartState
+          -> Signal (Int, Bool)
+          -> Signal (a, Bool, Bool)
+          -> Signal (Maybe Command)
+          -> SignalGen (Signal (IO ()))
+          
+          
 hunted win windowSize directionKey shootKey randomGenerator textures glossState sounds startState snapshotSig recordKey commands = mdo
   let mkGame = playGame windowSize directionKey shootKey randomGenerator startState commands (snd <$> recordingData)
   (gameState, gameTrigger) <- switcher $ mkGame <$> gameStatus'
@@ -216,8 +235,8 @@ playLevel windowSize directionKey shootKey randomGenerator startState commands r
 
     -- sound signals
     statusChange <- transfer3 Nothing safeOrDanger monsters monsters' levelOver
-    playerScreams <- Elerea.until ((== (Just Lose)) <$> levelOver)
-    monsterScreams <- Elerea.until ((== (Just Win)) <$> levelOver)
+    playerScreams <- Elerea.till ((== (Just Lose)) <$> levelOver)
+    monsterScreams <- Elerea.till ((== (Just Win)) <$> levelOver)
 
     let actualLives = overridingLives lives <$> commands <*> actualLives'
         overridingLives lives (Just (LivesCommand num)) _ = num
@@ -479,6 +498,16 @@ monitorStatusChange ((Monster _ (Wander _ _) _), (Monster _ (Hunting _) _)) = Ju
 monitorStatusChange _ = Nothing
 
 -- output functions
+outputFunction :: GLFW.Window
+                  -> State
+                  -> Testing.Graphics.Textures
+                  -> Sounds
+                  -> GameState
+                  -> (Int, Bool)
+                  -> (String, Bool)
+                  -> (Bool, Bool, Bool, Bool)
+                  -> (Bool, Bool, Bool, Bool)
+                  -> IO ()
 outputFunction window glossState textures sounds (GameState renderState soundState) snapshot record directionKey shootKey =
   (renderFrame window glossState textures (worldWidth, worldHeight) renderState) >>
     playSounds sounds soundState >>

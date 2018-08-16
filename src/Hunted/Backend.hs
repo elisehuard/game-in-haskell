@@ -11,6 +11,12 @@ import Control.Monad (when)
 import Control.Applicative ((<$>), (<*>))
 
 --withWindow :: Int -> Int -> String -> (GLFW.Window -> IO ()) -> IO ()
+withWindow :: Int
+              -> Int
+              -> ((Int, Int) -> IO ())
+              -> String
+              -> (Window -> IO a)
+              -> IO ()
 withWindow width height windowSizeSink title f = do
     GLFW.setErrorCallback $ Just simpleErrorCallback
     r <- GLFW.init
@@ -20,7 +26,7 @@ withWindow width height windowSizeSink title f = do
           (Just win) -> do
               GLFW.makeContextCurrent m
               setWindowSizeCallback win $ Just $ resize windowSizeSink
-              f win
+              _ <- f win
               GLFW.setErrorCallback $ Just simpleErrorCallback
               GLFW.destroyWindow win
           Nothing -> return ()

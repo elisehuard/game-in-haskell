@@ -1,5 +1,6 @@
 {-# LANGUAGE PackageImports #-}
 import "GLFW-b" Graphics.UI.GLFW as GLFW
+import Graphics.Gloss
 import Graphics.Gloss.Rendering
 import Graphics.Gloss.Data.Color
 import Graphics.Gloss.Data.Picture
@@ -23,7 +24,7 @@ main = do
             renderFrame window glossState
             k <- keyIsPressed window Key'Escape
             unless k $ loop glossState window
-
+renderFrame :: Window -> State -> IO ()
 renderFrame window glossState = do
      displayPicture (windowWidth, windowHeight) white glossState 1.0 $
        Pictures

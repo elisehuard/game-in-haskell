@@ -13,7 +13,8 @@ import Sound.ALUT hiding (Static)
 import System.IO ( hPutStrLn, stderr )
 import Data.List (intersperse)
 import Control.Monad (when, unless)
-import Control.Monad.IO.Class (MonadIO(..))
+-- import Control.Monad.IO.Class (MonadIO(..))
+import Control.Monad.IO.Class ()
 import Control.Applicative ((<$>), (<*>))
 
 data Sounds = Sounds { backgroundTune :: Source

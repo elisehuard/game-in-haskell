@@ -8,11 +8,13 @@ module Hunted.Game (
 import Hunted.GameTypes
 import Hunted.Sound
 import Hunted.Graphics
-
+import "GLFW-b" Graphics.UI.GLFW as GLFW
 import FRP.Elerea.Simple as Elerea
 import Control.Applicative ((<$>), (<*>), liftA2, pure)
 import Data.Maybe (mapMaybe)
 import Data.Foldable (foldl')
+import Graphics.Gloss ()
+import Graphics.Gloss.Rendering
 import Graphics.Gloss.Data.ViewPort
 import System.Random (random, RandomGen(..), randomRs)
 
@@ -68,6 +70,18 @@ initialLives = 3
 --   pull request required
 -}
 -- expected:
+ -- uncomment when the decimal point bug in GLFW-b-3.2 is corrected --
+hunted :: RandomGen p =>
+          GLFW.Window
+          -> Signal (Int, Int)
+          -> Signal (Bool, Bool, Bool, Bool)
+          -> Signal (Bool, Bool, Bool, Bool)
+          -> p
+          -> Hunted.Graphics.Textures
+          -> State
+          -> Sounds
+          -> SignalGen (Signal (IO ())) 
+               
 hunted win windowSize directionKey shootKey randomGenerator textures glossState sounds = mdo
   let mkGame = playGame windowSize directionKey shootKey randomGenerator
   (gameState, gameTrigger) <- switcher $ mkGame <$> gameStatus'
@@ -130,17 +144,16 @@ switcher levelGen = mdo
         store Nothing x = x
         toMaybe bool x = if bool then Just <$> x else pure Nothing
 
-{-
+
 playLevel :: RandomGen t =>
              Signal (Int, Int)
-          -> Signal (Bool, Bool, Bool, Bool)
-          -> Signal (Bool, Bool, Bool, Bool)
-          -> t
-          -> LevelStatus
-          -> Float
-          -> Int
-          -> SignalGen (Signal GameState, Signal Bool)
--}
+             -> Signal (Bool, Bool, Bool, Bool)
+             -> Signal (Bool, Bool, Bool, Bool)
+             -> t
+             -> LevelStatus
+             -> Float
+             -> Int
+             -> SignalGen (Signal GameState, Signal Bool)
 playLevel windowSize directionKey shootKey randomGenerator level@(Level n) currentScore lives = mdo
 
     -- render signals
@@ -170,8 +183,8 @@ playLevel windowSize directionKey shootKey randomGenerator level@(Level n) curre
 
     -- sound signals
     statusChange <- transfer3 Nothing safeOrDanger monsters monsters' levelOver
-    playerScreams <- Elerea.until ((== (Just Lose)) <$> levelOver)
-    monsterScreams <- Elerea.until ((== (Just Win)) <$> levelOver)
+    playerScreams <- Elerea.till ((== (Just Lose)) <$> levelOver)
+    monsterScreams <- Elerea.till ((== (Just Win)) <$> levelOver)
 
 
     let monsterIsHunting = (foldr (||) False) <$> (fmap <$> (stillHunting <$> levelOver) <*> monsters)
@@ -420,5 +433,13 @@ monitorStatusChange ((Monster _ (Wander _ _) _), (Monster _ (Hunting _) _)) = Ju
 monitorStatusChange _ = Nothing
 
 -- output functions
+-- uncomment when decimal point in module suffix bug is corrected
+outputFunction :: GLFW.Window
+                  -> State
+                  -> Hunted.Graphics.Textures
+                  -> Sounds
+                  -> GameState
+                  -> IO ()
+                  
 outputFunction window glossState textures sounds (GameState renderState soundState) =
   (renderFrame window glossState textures (worldWidth, worldHeight) renderState) >> (playSounds sounds soundState)
